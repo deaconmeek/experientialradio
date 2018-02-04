@@ -3,18 +3,15 @@
 		<title>Experiential Radio</title>
 
 	</head>
-	<body>
-		<img src="website.jpg" usemap="#imagemap" />
+	<body style="text-align:center">
+		<img src="website.jpg" usemap="#imagemap" style="height: 100%; width: auto;" />
 
 		<map name="imagemap">
-  			<area shape="rect" coords="10,320,302,360" href="play1.html" />
-  			<area shape="rect" coords="10,372,560,410" href="play2.html" />
+  			<area id="link1" shape="rect" coords="10,320,302,360" href="play1.html" />
+  			<area id="link2" shape="rect" coords="10,372,560,410" href="play2.html" />
 		</map>
 
-		<script>
-				window.ga=function(){ga.q.push(arguments)};ga.q=[];ga.l=+new Date;
-				ga('create','UA-113501052-1','auto');ga('send','pageview')
-		</script>
+		<script src="script.js" async defer></script>
 		<script src="https://www.google-analytics.com/analytics.js" async defer></script>
 	</body>
 </html>

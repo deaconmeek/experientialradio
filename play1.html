@@ -3,14 +3,17 @@
 		<title>Experiential Radio</title>
 
 	</head>
-	<body>
-		<img src="website2.jpg" usemap="#imagemap" />
+	<body style="text-align:center">
+		<img src="website2.jpg" usemap="#imagemap" style="height: 100%; width: auto;" />
 
 		<map name="imagemap">
-  			<area shape="rect" coords="10,320,302,360" href="play1.html" />
-  			<area shape="rect" coords="10,372,560,410" href="play2.html" />
+  			<area id="link1" shape="rect" coords="10,320,302,360" href="play1.html" />
+  			<area id="link2" shape="rect" coords="10,372,560,410" href="play2.html" />
 		</map>
 
 		<embed src="IsntRearrangementRave.mp3" width="0" height="0" autostart="true" >
+
+		<script src="script.js" async defer></script>
+		<script src="https://www.google-analytics.com/analytics.js" async defer></script>
 	</body>
 </html>
