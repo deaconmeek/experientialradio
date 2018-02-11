@@ -1,17 +1,44 @@
 <html>
-	<head>
-		<title>Experiential Radio</title>
-
-	</head>
-	<body style="text-align:center">
-		<img src="website.jpg" usemap="#imagemap" style="height: 100%; width: auto;" />
-
-		<map name="imagemap">
-  			<area id="link1" shape="rect" coords="10,320,302,360" href="play1.html" />
-  			<area id="link2" shape="rect" coords="10,372,560,410" href="play2.html" />
-		</map>
-
-		<script src="script.js" async defer></script>
-		<script src="https://www.google-analytics.com/analytics.js" async defer></script>
-	</body>
+  <head>
+    <title>Experiential Radio</title>
+    <link href="style.css" rel="stylesheet" type="text/css">
+    <link rel="shortcut icon" href="favicon.png">
+  </head>
+  <body>
+    <div id="bg">
+      <canvas id="piccy" alt="" />
+    </div>
+    <div style="display:none;">
+      <img id="source" />
+    </div>
+    <a id="play" href="#"><img id="play-icon" src="img/tape2.png"/></a>
+    <span id="score" class="hidden"></span>
+    <div id="question-container"><span id="question" class="words"></span></div>
+    <div id="answer-container"><a id="answer-link" href="#"><span id="answer" class="words"></span></a></div>
+    <audio id="beatz" autoplay loop></audio>
+    <audio id="glitch"><source src="audio/glitch.wav" /></audio>
+    <audio id="glitch2"><source src="audio/glitch2.wav" /></audio>
+    <audio id="glitch3"><source src="audio/glitch3.wav" /></audio>
+    <script src="https://www.gstatic.com/firebasejs/4.9.1/firebase.js"></script>
+    <script>
+      // Initialize Firebase
+      var config = {
+        apiKey: "AIzaSyBNXJxeGquwuXCWa-5EWujiJnYpIi1QB4A",
+        authDomain: "dazzling-inferno-8250.firebaseapp.com",
+        databaseURL: "https://dazzling-inferno-8250.firebaseio.com",
+        projectId: "dazzling-inferno-8250",
+        storageBucket: "dazzling-inferno-8250.appspot.com",
+        messagingSenderId: "623040750398"
+      };
+      firebase.initializeApp(config);
+    </script>
+    <script src="jsmanipulate.min.js" async defer></script>
+    <script src="lodash-throttle.js" async defer></script>
+    <script src="script.js" async defer></script>
+    <script src="https://www.google-analytics.com/analytics.js" async defer></script>
+    <script>
+        window.ga=function(){ga.q.push(arguments)};ga.q=[];ga.l=+new Date;
+        ga('create','UA-113501052-1','auto');ga('send','pageview')
+    </script>
+  </body>
 </html>
