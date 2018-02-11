@@ -237,8 +237,8 @@ function generateQuestion(allowFromQueryParams) {
 
 function generateImageUrl(callback) {
   const xhr = new XMLHttpRequest();
-  // const url = `https://us-central1-dazzling-inferno-8250.cloudfunctions.net/fetchImage?question=${question}`;
-  const url = `http://localhost:5000/dazzling-inferno-8250/us-central1/fetchImageUrl?question=${encodeURIComponent(_question)}`;
+  const url = `https://us-central1-dazzling-inferno-8250.cloudfunctions.net/fetchImage?question=${encodeURIComponent(_question)}`;
+  // const url = `http://localhost:5000/dazzling-inferno-8250/us-central1/fetchImageUrl?question=${encodeURIComponent(_question)}`;
   xhr.open('GET', url, true);
   xhr.onreadystatechange = function () {
     if(xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
