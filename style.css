@@ -11,15 +11,17 @@ body {
 .words-container {
   z-index: 100;
   background-color: black;
-  min-height: 12vh;
+  height: 12vh;
 }
 .words {
-  font-size: 6vh;
+  font-size: 5vh;
   color: aliceblue;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  width: 53px;
+  display: block;
+  width: 85%;
+  margin: 0 auto;
 }
 .noselect {
   -webkit-touch-callout: none; /* iOS Safari */
@@ -53,7 +55,6 @@ body {
 .centered div {
   display: table-cell;
   vertical-align: middle;
-  width: 90vh;
 }
 .notransition {
   -webkit-transition: none !important;
@@ -76,7 +77,7 @@ body {
   height: 100%;
   text-align: left;
   margin-top: 0;
-  font-size; 2vh;
+  font-size: 2vh;
 }
 #question-container {
   position: absolute;
@@ -97,6 +98,9 @@ body {
 }
 #question-link:hover {
   text-decoration: underline;
+}
+#answer {
+  vertical-align: top;
 }
 #answer {
   cursor: help;

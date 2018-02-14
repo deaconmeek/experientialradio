@@ -146,7 +146,7 @@ function munge() {
   const oldScore = _score;
   _score += _mungeMomentum * _mungeMomentum * 10;
 
-  console.log('_score', _score);
+  // console.log('_score', _score);
   if (_score < MUNGE_START_SCORE) {
     return;
   }
@@ -267,7 +267,7 @@ function getRandomChar() {
 function createDecellerationTimeout() {
   window.setTimeout(() => {
     updateMomentum(-1);
-    console.log(_mungeMomentum);
+    // console.log(_mungeMomentum);
   }, DECELLERATION_INTERVAL);
 }
 
@@ -294,7 +294,7 @@ function filterImageData(imageData, filterToApply) {
   if (!filterToApply) {
     filterToApply = imgFilters[(Math.random() * imgFilters.length)|0];
   }
-  console.log('filter', filterToApply);
+  // console.log('filter', filterToApply);
   JSManipulate[filterToApply].filter(imageData, {amount: 1});
 }
 
@@ -430,7 +430,7 @@ function init() {
     } else {
       return new Promise((resolve) => {
         generateImageUrl((imageUrl) => {
-          console.log(imageUrl);
+          // console.log(imageUrl);
           resolve(imageUrl || 'https://deaconmeek.github.io/experientialradio/img/waaat.jpg');
         });
       });
