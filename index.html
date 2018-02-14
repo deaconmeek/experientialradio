@@ -1,6 +1,7 @@
 <html>
   <head>
     <title>Experiential Radio</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' />
     <link href="style.css" rel="stylesheet" type="text/css">
     <link rel="shortcut icon" href="favicon.png">
   </head>
@@ -11,8 +12,12 @@
   <div id="bg-alt" class="spread">
     <canvas id="main-image-alt" alt=""></canvas>
   </div>
-    <div id="question-container"><a id="question-link" href="#"><span id="question" class="words noselect stroke"></span></a></div>
-    <div id="answer-container"><span id="answer" class="words noselect stroke"></span></div>
+    <div id="question-container" class="words-container centered"><div>
+      <a id="question-link" href="#"><span id="question" class="words noselect stroke"></span></a>
+    </div></div>
+    <div id="answer-container" class="words-container centered"><div>
+      <span id="answer" class="words noselect stroke"></span>
+    </div></div>
     <pre id="code-container"></pre>
     <audio id="beatz" loop></audio>
     <audio id="glitch" src="audio/glitch.mp3"></audio>

@@ -44,6 +44,7 @@ const CHAR_ITERATIONS = 15;
 
 let _scriptLines;
 let _question;
+let _wordsBaseColor;
 let _initialQuestion;
 let _audioQuestion;
 let _questionDeltaByCharIndex = {};
@@ -235,17 +236,7 @@ function mungeHtml() {
 }
 
 function mungeQuestionColor(multicolor) {
-  document.getElementById('question').setAttribute('style', 'color:' + (multicolor ? getRandomColor() : '#000'));
-}
-
-function mungeAnswer() {
-  let newAnswer = [..._answer].map(o => getRandomChar()).join('');
-  setAnswer(newAnswer);
-}
-
-function mungeAnswerLetter() {
-  const randInt1 = (Math.random() * _answer.length)|0;
-  setAnswer(_answer.substr(0, randInt1) + getRandomChar() + _answer.substr(randInt1 + 1));
+  document.getElementById('question').setAttribute('style', 'color:' + (multicolor ? getRandomColor() : _wordsBaseColor));
 }
 
 function mungeQuestionLetter() {
@@ -278,13 +269,6 @@ function createDecellerationTimeout() {
     updateMomentum(-1);
     console.log(_mungeMomentum);
   }, DECELLERATION_INTERVAL);
-}
-
-function toggleAudio() {
-  const muted = !document.getElementById('beatz').muted;
-  const playImg = muted ? 'img/tape2.png' : 'img/tape2.gif';
-  document.getElementById('beatz').muted = muted;
-  document.getElementById('play-icon').setAttribute('src', playImg);
 }
 
 function buildImageData(url) {
@@ -378,12 +362,6 @@ function setAudioMode(audioIndex) {
     audioFile = 'audio/' + audioIndex + '.mp3';
   }
   beatzEl.setAttribute('src', audioFile);
-
-  // window.addEventListener('keydown', (e) => {
-  //   if (e.keyCode === 32) {
-  //     toggleAudio();
-  //   }
-  // });
 }
 
 function setQuestion(question) {
@@ -409,6 +387,7 @@ function init() {
   const questionLinkEl = document.getElementById('question-link');
   const answerEl = document.getElementById('answer');
   _initialQuestion = generateQuestion(true);
+  _wordsBaseColor = answerEl.style.color;
   const nextQuestion = encodeURIComponent(generateQuestion());
   const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + nextQuestion;
   questionLinkEl.setAttribute('href', nextHref);
@@ -428,10 +407,10 @@ function init() {
   _clickAnimationHandler = function () {
     // answerEl.classList.remove('fade');
     answerEl.classList.add('notransition'); // Disable transitions
-    answerEl.style.color = '#CCC';
+    answerEl.style.color = 'black';
     answerEl.offsetHeight; // Trigger a reflow, flushing the CSS changes
     answerEl.classList.remove('notransition'); // Re-enable transitions
-    answerEl.style.color = 'black';
+    answerEl.style.color = _wordsBaseColor;
   };
 
   answerEl.addEventListener('click', munge);
