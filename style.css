@@ -14,13 +14,13 @@ body {
   height: 12vh;
 }
 .words {
-  font-size: 5vh;
+  font-size: 4vh;
   color: aliceblue;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   display: block;
-  width: 85%;
+  width: 90%;
   margin: 0 auto;
 }
 .noselect {
