@@ -5,21 +5,18 @@
     <link rel="shortcut icon" href="favicon.png">
   </head>
   <body>
-    <div id="bg">
-      <canvas id="piccy" alt="" />
-    </div>
-    <div style="display:none;">
-      <img id="source" />
-    </div>
-    <a id="play" href="#"><img id="play-icon" src="img/tape2.png"/></a>
-    <span id="score" class="hidden"></span>
-    <div id="question-container"><span id="question" class="words"></span></div>
-    <div id="answer-container"><a id="answer-link" href="#"><span id="answer" class="words"></span></a></div>
+  <div id="bg" class="spread">
+    <canvas id="main-image" alt=""></canvas>
+  </div>
+  <div id="bg-alt" class="spread">
+    <canvas id="main-image-alt" alt=""></canvas>
+  </div>
+    <div id="question-container"><a id="question-link" href="#"><span id="question" class="words noselect stroke"></span></a></div>
+    <div id="answer-container"><span id="answer" class="words noselect stroke"></span></div>
+    <pre id="code-container"></pre>
     <audio id="beatz" autoplay loop></audio>
-    <audio id="glitch"><source src="audio/glitch.wav" /></audio>
-    <audio id="glitch2"><source src="audio/glitch2.wav" /></audio>
+    <audio id="glitch" src="audio/glitch.mp3"></audio>
     <script src="jsmanipulate.min.js" async defer></script>
-    <script src="lodash-throttle.js" async defer></script>
     <script src="script.js" async defer></script>
     <script src="https://www.google-analytics.com/analytics.js" async defer></script>
     <script>

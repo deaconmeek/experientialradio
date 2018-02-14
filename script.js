@@ -1,21 +1,31 @@
-/* global document, window, XMLHttpRequest, lodash, console, JSManipulate */
+/* global document, window, XMLHttpRequest, console, JSManipulate, Promise */
 'use strict';
 
 const hexChars = '0123456789ABCDEF';
-const htmlEls = ['a', 'abbr', 'acronym', 'address', 'applet', 'area', 'article', 'aside', 'audio', 'b', 'base', 'basefont', 'bdi', 'bdo', 'bgsound', 'big', 'blink', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'command', 'content', 'data', 'datalist', 'dd', 'del', 'details', 'dfn', 'dialog', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'embed', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'frame', 'frameset', 'h1', 'head', 'header', 'hgroup', 'hr', 'html', 'i', 'iframe', 'image', 'img', 'input', 'ins', 'isindex', 'kbd', 'keygen', 'label', 'legend', 'li', 'link', 'listing', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meta', 'meter', 'multicol', 'nav', 'nextid', 'nobr', 'noembed', 'noframes', 'noscript', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'picture', 'plaintext', 'pre', 'progress', 'q', 'rp', 'rt', 'rtc', 'ruby', 's', 'samp', 'script', 'section', 'select', 'shadow', 'slot', 'small', 'source', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'title', 'tr', 'track', 'tt', 'u', 'ul', 'var', 'video', 'wbr', 'xmp'];
-const imgFilters = ['circlesmear', 'diffusion', 'dither', 'invert', 'noise', 'pixelate', 'posterize', 'sepia', 'solarize'];
+const htmlEls = ['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'b', 'base', 'basefont', 'bdi', 'bdo', 'bgsound', 'big', 'blink', 'blockquote', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'command', 'data', 'datalist', 'dd', 'details', 'dfn', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'header', 'hgroup', 'hr', 'i', 'iframe', 'input', 'isindex', 'kbd', 'keygen', 'label', 'legend', 'li', 'listing', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meta', 'meter', 'multicol', 'nav', 'nextid', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'picture', 'plaintext', 'pre', 'progress', 'q', 'rp', 's', 'samp', 'section', 'select', 'shadow', 'slot', 'small', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'xmp'];
+const imgFilters = ['circlesmear', 'diffusion', 'dither', 'noise', 'pixelate', 'posterize', 'solarize']; // 'invert', 'sepia',
 
-const adjectives = [
-  'Sweet', 'Sour', 'Naughty', 'Boiling', 'Freezing', 'Questionable', 'Sound', 'Experimental',
-  'Reasonable', 'Magnificent', 'Conventional', 'Unusual', 'Unreasonable',
+const phrases = [
+  'Holy fuck', 'Conscientious objector', 'Unreasonable behaviour', 'Magnificent void', 'Reasonable doubt', 'Sound advice',
+  'Questionable content', 'Conventional wisdom', 'Political agenda', 'Unusual predicament', 'Unique situation', 'Naughty nature',
+  'Beautiful losers', 'Suspicious activity', 'Complete ass', 'Heavenly creatures', 'Manufacturing consent', 'Vengeful god',
 ];
-const nouns = [
-  'tit', 'rabbits', 'predicament', 'content', 'nature', 'god', 'advice', 'doubt', 'grapes',
-  'fuck', 'ass', 'shit', 'gripes',
-];
+const unicodeBrackets = {
+  0: ['0020', '60'],
+  1: ['0020', '2AD'],
+  2: ['0020', 'FFD'],
+  3: ['0020', 'FFD'],
+  4: ['1000', 'FFF'],
+  5: ['2000', 'FFF'],
+  6: ['3000', '7FFF'],
+  7: ['A000', 'FFF'],
+  8: ['B000', '3FFF'],
+  9: ['FB00', '5FF'],
+};
+
 const audioMeta = {
   1: 'Amen breakdown',
-  2: 'Desent',
+  2: 'Descent',
   3: 'In the mist',
   4: 'Irie abstraction',
   5: 'Isn\'t rearrangement rave',
@@ -26,16 +36,23 @@ const audioMeta = {
   10: 'Stereo checkout',
 };
 
-const DECELLERATION_FACTOR = 8;
-const MUNGE_LEVEL_1 = 700;
+const DECELLERATION_INTERVAL = 1500;
+const MUNGE_START_SCORE = 5000;
+const MOMENTUM_LEVEL_3 = 15;
+const GLITCH_SCORE_MOD = 50000;
+const CHAR_ITERATIONS = 15;
 
+let _scriptLines;
+let _allEls;
 let _question;
+let _initialQuestion;
+let _audioQuestion;
+let _questionDeltaByCharIndex = {};
 let _answer = 'Experiential radio.';
-let _imageUrl;
-let _mungeRate = 9;
 let _mungeMomentum = 0;
-let _mungeStopTimer;
-let _score;
+let _score = 0;
+let _gameOver = false;
+let _clickAnimationHandler;
 
 function getRandomColor() {
   let color = '#';
@@ -46,129 +63,222 @@ function getRandomColor() {
 }
 
 function getRandomHtmlEl() {
-  const type = htmlEls[(Math.random() * htmlEls.length)|0];
-  const el = document.createElement(type);
+  const allEls = document.getElementsByTagName('*');
+  let randomEl;
+  while (!randomEl || !randomEl.id) {
+    randomEl = allEls[(Math.random() * allEls.length)|0];
+  }
+  const clonedEl = deepCloneEl(randomEl);
+
   const color = getRandomColor();
   const screenWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
   const screenHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-  const w = (Math.random() * screenWidth)|0;
-  const h = (Math.random() * screenHeight)|0;
-  const x = (Math.random() * screenWidth)|0;
-  const y = (Math.random() * screenHeight)|0;
+  const x = (Math.random() * (screenWidth - 100))|0;
+  const y = (Math.random() * (screenHeight - 100))|0;
+  const w = ((Math.random() * (screenWidth - x))|0) + 100;
+  const h = ((Math.random() * (screenHeight - y))|0) + 100;
   const size = (Math.random() * 100)|0;
+
+  let randomElType = htmlEls[(Math.random() * htmlEls.length)|0];
+  let el = document.createElement(randomElType);
+  el.appendChild(clonedEl);
   el.setAttribute('style', 'z-index:10;font-size:' + size + 'px;color:' + color + ';position:absolute;top:' + y + ';left:' + x + ';width:' + w + ';height:' + h + ';');
-  el.innerHTML = String.fromCharCode((Math.random() * Number.MAX_SAFE_INTEGER)|0);
   return el;
 }
 
-function playSound(sound, callback) {
-  document.getElementById(sound).play();
-  document.getElementById(sound).onended = callback;
+function deepCloneEl(el) {
+  const elAttributes = {};
+  const clonedEl = cloneEl(el, elAttributes);
+  let traversedEl = clonedEl;
+  while (traversedEl) {
+    if (traversedEl.tagName === 'CANVAS' && elAttributes.imageData) {
+      traversedEl.getContext('2d').putImageData(elAttributes.imageData, 0, 0);
+    } else if (traversedEl.tagName === 'AUDIO' && elAttributes.src) {
+      traversedEl.setAttribute('src', elAttributes.src);
+      traversedEl.setAttribute('autoplay', true);
+    } else if (traversedEl.tagName === 'IFRAME') {
+      traversedEl.setAttribute('src', 'index.html');
+    }
+    traversedEl = (traversedEl.hasChildNodes() && traversedEl.firstChild.tagName) ? traversedEl.firstChild : null;
+  }
+  return clonedEl;
+}
+
+function cloneEl(el, elAttributes) {
+  elAttributes = elAttributes || {};
+  if (el.tagName === 'CANVAS') {
+    elAttributes.imageData = el.getContext('2d').getImageData(0, 0, el.width, el.height);
+  } else if (el.tagName === 'AUDIO') {
+    elAttributes.src = el.getAttribute('src');
+  }
+
+  const clonedEl = el.cloneNode();
+  clonedEl.innerHTML = el.innerHTML ? el.innerHTML.replace(/id="[^"]+"/g, '') : ''; //.replace(/class="[^"]+"/g, '') : '';
+  clonedEl.id = '';
+  clonedEl.setAttribute('style', '');
+  clonedEl.className = '';
+  if (clonedEl.hasChildNodes() && clonedEl.firstChild.tagName) {
+    clonedEl.appendChild(cloneEl(clonedEl.firstChild, elAttributes));
+  }
+  return clonedEl;
+}
+
+function getScriptSnippet() {
+  return _scriptLines[(Math.random() * _scriptLines.length)|0].trim();
+}
+
+function playGlitch(duration) {
+  const glitchEl = document.getElementById('glitch');
+  glitchEl.currentTime = (Math.random() * (glitchEl.duration - (duration / 1000)));
+  glitchEl.volume = 0.8;
+  window.setTimeout(() => {
+    glitchEl.play();
+    window.setTimeout(() => {
+      glitchEl.pause();
+    }, duration);
+  }, 100);
 }
 
 function munge() {
-  if (_mungeMomentum > 1000) {
-    mungeQuestion();
-    mungeAnswer();
-  } else {
-    mungeAnswerLetter();
-  }
-  updateMomentum();
+  updateMomentum(1);
+  createDecellerationTimeout();
+
   const oldScore = _score;
-  updateScore();
-  if (!oldScore && _score) {
-    mungeBackground();
+  _score += _mungeMomentum * _mungeMomentum * 10;
+
+  console.log('_score', _score);
+  if (_score < MUNGE_START_SCORE) {
+    return;
   }
-  if (oldScore % 100000 > _score % 100000) {
+
+  if (_gameOver) {
+    return;
+  }
+
+  const wasGameOver = _gameOver;
+  mungeQuestionLetter();
+  // mungeAnswerLetter();
+  if (!wasGameOver && _gameOver) {
+    setGameOver();
+    return;
+  }
+
+  if (oldScore < MUNGE_START_SCORE && _score >= MUNGE_START_SCORE) {
+    setGameStart();
+  }
+  if (oldScore % GLITCH_SCORE_MOD > _score % GLITCH_SCORE_MOD) {
+    altBackground(2);
+    playGlitch(300);
     mungeHtml();
   }
 }
 
-function mungeBackground() {
+function updateMomentum(delta) {
+  const oldMomentum = _mungeMomentum;
+  _mungeMomentum = Math.max(_mungeMomentum + delta, 0);
+  if (_mungeMomentum >= MOMENTUM_LEVEL_3) {
+    mungeQuestionColor(true);
+  } else if (oldMomentum >= MOMENTUM_LEVEL_3) {
+    mungeQuestionColor(false);
+  }
+}
+
+function setGameStart() {
+  if (_audioQuestion.length > _initialQuestion.length) {
+    _initialQuestion = padWord(_initialQuestion, _audioQuestion.length);
+  } else {
+    _audioQuestion = padWord(_audioQuestion, _initialQuestion.length);
+  }
+  setQuestion(_initialQuestion);
+
+  flashBackground(5);
+  playGlitch(1000);
+}
+
+function flashBackground(flashes) {
   const bgEl = document.getElementById('bg');
   const htmlEl = document.getElementsByTagName('html')[0];
   const originalColor = htmlEl.getAttribute('background-color');
-  playSound('glitch2', function () {
-    bgEl.style['display'] = 'block';
-    htmlEl.style['background-color'] = originalColor;
-    window.clearInterval(timer);
-  });
+
   bgEl.style['display'] = 'none';
-  const timer = window.setInterval(function () {
+  let flashCount = 0;
+  const timer = window.setInterval(() => {
     htmlEl.style['background-color'] = getRandomColor();
+    if (flashCount > flashes) {
+      window.clearInterval(timer);
+      bgEl.style['display'] = 'block';
+      htmlEl.style['background-color'] = originalColor;
+    }
+    flashCount += 1;
+  }, 100);
+}
+
+function altBackground(flashes) {
+  let flashCount = 0;
+  const timer = window.setInterval(() => {
+    if (flashCount % 2) {
+      document.getElementById('bg').style['display'] = 'none';
+      document.getElementById('bg-alt').style['display'] = 'block';
+    } else {
+      document.getElementById('bg').style['display'] = 'block';
+      document.getElementById('bg-alt').style['display'] = 'none';
+    }
+    if (flashCount >= flashes) {
+      window.clearInterval(timer);
+    }
+    flashCount += 1;
   }, 100);
 }
 
 function mungeHtml() {
-  playSound('glitch');
-  const el = getRandomHtmlEl();
-  document.getElementsByTagName('html')[0].prepend(el);
+  document.getElementsByTagName('body')[0].append(getRandomHtmlEl());
+  document.getElementById('code-container').innerText = document.getElementById('code-container').innerText + '\n' + getScriptSnippet();
 }
 
-function mungeQuestion() {
-  document.getElementById('question').setAttribute('style', 'color:' + getRandomColor());
+function mungeQuestionColor(multicolor) {
+  document.getElementById('question').setAttribute('style', 'color:' + (multicolor ? getRandomColor() : '#000'));
 }
 
 function mungeAnswer() {
-  let newAnswer = '';
-  const randInt = Math.random() * 10|0;
-  for (let char of [..._answer]) {
-    newAnswer += String.fromCharCode(char.charCodeAt() + randInt);
-  }
-  document.getElementById('answer').innerHTML = newAnswer;
-  _answer = newAnswer;
+  let newAnswer = [..._answer].map(o => getRandomChar()).join('');
+  setAnswer(newAnswer);
 }
 
 function mungeAnswerLetter() {
   const randInt1 = (Math.random() * _answer.length)|0;
-  const randInt2 = (Math.random() * 10)|0;
-  _answer = _answer.substr(0, randInt1) + String.fromCharCode(_answer[randInt1].charCodeAt() + randInt2) + _answer.substr(randInt1 + 1);
-  document.getElementById('answer').innerHTML = _answer;
+  setAnswer(_answer.substr(0, randInt1) + getRandomChar() + _answer.substr(randInt1 + 1));
 }
 
-function updateMomentum() {
-  setMomentum(_mungeMomentum + (_mungeRate * _mungeRate)|0);
-  const newMungeRate =  Math.min(Math.max(((1000 - _mungeMomentum) / 100)|0, 2), 9);
-  if (_mungeRate !== newMungeRate) {
-    _mungeRate = newMungeRate;
-    updateDebounceMungeHandler();
+function mungeQuestionLetter() {
+  let newChar;
+  let charIndex;
+  while (!Number.isInteger(charIndex) || (_questionDeltaByCharIndex[charIndex] && _questionDeltaByCharIndex[charIndex] > CHAR_ITERATIONS)) {
+    charIndex = (Math.random() * _question.length)|0;
   }
-  updateDecellerationHandler();
-}
-
-function updateDecellerationHandler(decellerating) {
-  let timeout;
-  window.clearTimeout(_mungeStopTimer);
-  timeout = _mungeRate * 50;
-  if (decellerating) {
-    setMomentum(Math.max(_mungeMomentum - (((_mungeMomentum / DECELLERATION_FACTOR)|0) + 1), 0));
-    if (_mungeMomentum === 0) {
-      return;
-    }
+  _questionDeltaByCharIndex[charIndex] = _questionDeltaByCharIndex[charIndex] || 0;
+  if (_questionDeltaByCharIndex[charIndex] === CHAR_ITERATIONS) {
+    newChar = _audioQuestion[charIndex];
+  } else {
+    newChar = getRandomChar();
   }
-  _mungeStopTimer = window.setTimeout(() => {
-    updateDecellerationHandler(true);
-  }, timeout);
+  _questionDeltaByCharIndex[charIndex] += 1;
+  setQuestion(_question.substr(0, charIndex) + newChar + _question.substr(charIndex + 1));
+  _gameOver = Object.values(_questionDeltaByCharIndex).every(o => o > CHAR_ITERATIONS);
 }
 
-function setMomentum(newMomentum) {
-  _mungeMomentum = newMomentum;
-  const redness = Math.min(((_mungeMomentum / 1000) * 255|0), 255);
-  document.getElementById('answer').setAttribute('style', 'color:rgb(' + redness + ',0,0)');
-  // console.log('_mungeMomentum', _mungeMomentum, '_mungeRate', _mungeRate);
+function getRandomChar() {
+  const unicodeBracket = unicodeBrackets[(Math.random() * Math.min(_mungeMomentum, 10))|0];
+  const startingInt = parseInt(unicodeBracket[0], 16);
+  const range = parseInt(unicodeBracket[1], 16);
+  const randomInt = startingInt + ((Math.random() * range)|0);
+  return String.fromCharCode(randomInt);
 }
 
-function updateScore() {
-  if (!_score) {
-    if (_mungeMomentum > MUNGE_LEVEL_1) {
-      document.getElementById('score').classList.remove('hidden');
-      _score = 1000;
-    }
-    return;
-  }
-  const mungeScore = ((_mungeMomentum * _mungeMomentum / 10000)|0) * 10;
-  _score += mungeScore;
-  document.getElementById('score').innerHTML = _score;
+function createDecellerationTimeout() {
+  window.setTimeout(() => {
+    updateMomentum(-1);
+    console.log(_mungeMomentum);
+  }, DECELLERATION_INTERVAL);
 }
 
 function toggleAudio() {
@@ -178,32 +288,31 @@ function toggleAudio() {
   document.getElementById('play-icon').setAttribute('src', playImg);
 }
 
-function setImage(url, callback) {
-  const sourceEl = document.getElementById('source');
-  const canvasEl = document.getElementById('piccy');
-  sourceEl.crossOrigin = "Anonymous";
-  sourceEl.onload = () => {
-    canvasEl.height = sourceEl.height;
-    canvasEl.width = sourceEl.width;
-    const context = canvasEl.getContext('2d');
-    context.drawImage(sourceEl, 0, 0);
-    const data = context.getImageData(0,0,canvasEl.width, canvasEl.height);
-    const randomFilter = imgFilters[(Math.random() * imgFilters.length)|0];
-    console.log('randomFilter', randomFilter);
-    JSManipulate.blur.filter(data, {amount: 1});
-    JSManipulate[randomFilter].filter(data);
-    context.putImageData(data,0,0);
-    canvasEl.style.opacity = 1;
+function buildImageData(url) {
+  return new Promise((resolve) => {
+    const sourceEl = document.createElement('img');
+    // const canvasEl = document.createElement('canvas');
+    const mainCanvasEl = document.getElementById('main-image');
+    sourceEl.crossOrigin = "Anonymous";
+    sourceEl.onload = () => {
+      mainCanvasEl.height = sourceEl.height;
+      mainCanvasEl.width = sourceEl.width;
+      const context = mainCanvasEl.getContext('2d');
+      context.drawImage(sourceEl, 0, 0);
+      const imageData = context.getImageData(0,0,mainCanvasEl.width, mainCanvasEl.height);
+      mainCanvasEl.getContext('2d').putImageData(imageData,0,0);
+      resolve(imageData);
+    };
+    sourceEl.setAttribute('src', url);
+  });
+}
 
-    document.getElementById('question').classList.add('stroke');
-    document.getElementById('answer').classList.add('stroke');
-    document.getElementById('score').classList.add('stroke');
-    if (callback) {
-      callback();
-      return;
-    }
-  };
-  sourceEl.setAttribute('src', url);
+function filterImageData(imageData, filterToApply) {
+  if (!filterToApply) {
+    filterToApply = imgFilters[(Math.random() * imgFilters.length)|0];
+  }
+  console.log('filter', filterToApply);
+  JSManipulate[filterToApply].filter(imageData, {amount: 1});
 }
 
 function generateQuestion(allowFromQueryParams) {
@@ -227,18 +336,18 @@ function generateQuestion(allowFromQueryParams) {
   let adjective;
   let noun;
   while (!adjective || adjective === lastAdjective) {
-    adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    adjective = phrases[Math.floor(Math.random() * phrases.length)].split(' ')[0];
   }
   while (!noun || noun === lastNoun) {
-    noun = nouns[Math.floor(Math.random() * nouns.length)];
+    noun = phrases[Math.floor(Math.random() * phrases.length)].split(' ')[1];
   }
   return `${adjective} ${noun}`;
 }
 
 function generateImageUrl(callback) {
   const xhr = new XMLHttpRequest();
-  const url = `https://us-central1-dazzling-inferno-8250.cloudfunctions.net/fetchImageUrl?question=${encodeURIComponent(_question)}`;
-  // const url = `http://localhost:5000/dazzling-inferno-8250/us-central1/fetchImageUrl?question=${encodeURIComponent(_question)}`;
+  const url = `https://us-central1-dazzling-inferno-8250.cloudfunctions.net/fetchImageUrl?question=${encodeURIComponent(_initialQuestion)}`;
+  // const url = `http://localhost:5000/dazzling-inferno-8250/us-central1/fetchImageUrl?question=${encodeURIComponent(_initialQuestion)}`;
   xhr.open('GET', url, true);
   xhr.onreadystatechange = function () {
     if(xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
@@ -249,91 +358,129 @@ function generateImageUrl(callback) {
   xhr.send();
 }
 
-function initWords() {
-  const questionEl = document.getElementById('question');
+function setGameOver() {
+  const questionLinkEl = document.getElementById('question-link');
   const answerEl = document.getElementById('answer');
-  const answerLinkEl = document.getElementById('answer-link');
-  questionEl.innerHTML = _question + '?';
-  answerEl.innerHTML = _answer;
-  const nextQuestion = encodeURIComponent(generateQuestion());
-  const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + nextQuestion;
-  answerLinkEl.setAttribute('href', nextHref);
+  const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + encodeURIComponent(_audioQuestion.trim());
+  questionLinkEl.setAttribute('href', nextHref);
+  setQuestion(_audioQuestion.trim(), true);
+  answerEl.style.cursor = 'default';
+  answerEl.removeEventListener('click', _clickAnimationHandler);
+  altBackground(Number.MAX_SAFE_INTEGER);
+  // document.getElementById('question').setAttribute('style', 'background-color:black');
 }
 
-function initAudio() {
+function setAudioMode(audioIndex) {
   const beatzEl = document.getElementById('beatz');
-  const playEl = document.getElementById('play');
-  const playIconEl = document.getElementById('play-icon');
-  const questionEl = document.getElementById('question');
-
-  const randomInt = Math.floor(Math.random() * Object.keys(audioMeta).length) + 1;
-  const audioFile = 'audio/' + randomInt + '.mp3';
-  const audioImgUrl = 'img/' + randomInt + '.jpg';
-  const audioTitle = audioMeta[randomInt];
-
+  let audioFile;
+  if (audioIndex === '0') {
+    audioFile = 'audio/' + audioIndex + '.wav';
+  } else {
+    audioFile = 'audio/' + audioIndex + '.mp3';
+  }
   beatzEl.setAttribute('src', audioFile);
-  playIconEl.setAttribute('src', 'img/tape2.gif');
 
-  window.addEventListener('keydown', (e) => {
-    if (e.keyCode === 32) {
-      toggleAudio();
+  // window.addEventListener('keydown', (e) => {
+  //   if (e.keyCode === 32) {
+  //     toggleAudio();
+  //   }
+  // });
+}
+
+function setQuestion(question) {
+  document.getElementById('question').innerHTML = question + '?';
+  _question = question;
+}
+function setAnswer(answer) {
+  document.getElementById('answer').innerHTML = answer;
+  _answer = answer;
+}
+function padWord(word, length) {
+  while (word.length < length) {
+    if ((length - word.length) % 2) {
+      word = ' ' + word;
+    } else {
+      word = word + ' ';
     }
-  });
-
-  playEl.onclick = (e) => {
-    e.preventDefault();
-    toggleAudio();
-  };
-
-  playIconEl.addEventListener('mouseenter', () => {
-    setImage(audioImgUrl, () => {
-      questionEl.innerHTML = audioTitle + '?';
-    });
-  });
-  playIconEl.addEventListener('mouseleave', () => {
-    setImage(_imageUrl, () => {
-      questionEl.innerHTML = _question;
-    });
-  });
-  playIconEl.addEventListener('touchstart', () => {
-    setImage(audioImgUrl, () => {
-      questionEl.innerHTML = audioTitle + '?';
-    });
-  });
-  playIconEl.addEventListener('touchend', () => {
-    setImage(_imageUrl, () => {
-      questionEl.innerHTML = _question;
-    });
-  });
-}
-
-function initImage() {
-  generateImageUrl((imageUrl) => {
-    _imageUrl = imageUrl || 'img/waaat.jpg';
-    // var imageUrl = 'https://c1.staticflickr.com/5/4595/24610547237_32bf1ed085.jpg';
-    setImage(_imageUrl);
-  });
-}
-
-function updateDebounceMungeHandler () {
-  const trailing = _mungeRate <= 5;
-  document.getElementById('answer').onmousemove =
-    lodash.debounce(munge, (_mungeRate * 10), { leading: true, trailing: trailing });
-  document.getElementById('answer').ontouchmove =
-    lodash.debounce(munge, (_mungeRate * 10), { leading: true, trailing: trailing });
-}
-
-function initMunger() {
-  updateDebounceMungeHandler();
+  }
+  return word;
 }
 
 function init() {
-  _question = generateQuestion(true);
-  initWords();
-  initAudio();
-  initImage();
-  initMunger();
+  const questionLinkEl = document.getElementById('question-link');
+  const answerEl = document.getElementById('answer');
+  _initialQuestion = generateQuestion(true);
+  const nextQuestion = encodeURIComponent(generateQuestion());
+  const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + nextQuestion;
+  questionLinkEl.setAttribute('href', nextHref);
+  setQuestion(_initialQuestion);
+  setAnswer(_answer);
+
+  while (!_audioQuestion || _audioQuestion === _initialQuestion) {
+    const randomInt = Math.floor(Math.random() * Object.keys(audioMeta).length) + 1;
+    _audioQuestion = audioMeta[randomInt];
+  }
+
+  let audioKey;
+  if (Object.values(audioMeta).indexOf(_initialQuestion) >= 0) {
+    audioKey = Object.keys(audioMeta)[Object.values(audioMeta).indexOf(_initialQuestion)];
+  }
+
+  _clickAnimationHandler = function () {
+    // answerEl.classList.remove('fade');
+    answerEl.classList.add('notransition'); // Disable transitions
+    answerEl.style.color = '#CCC';
+    answerEl.offsetHeight; // Trigger a reflow, flushing the CSS changes
+    answerEl.classList.remove('notransition'); // Re-enable transitions
+    answerEl.style.color = 'black';
+  };
+
+  answerEl.addEventListener('click', munge);
+  answerEl.addEventListener('click', _clickAnimationHandler);
+
+  if (audioKey) {
+    setAudioMode(audioKey);
+  } else {
+    setAudioMode('0');
+  }
+  Promise.resolve().then(() => {
+    if (audioKey) {
+      return Promise.resolve('https://deaconmeek.github.io/experientialradio/img/' + audioKey + '.jpg');
+    } else {
+      return new Promise((resolve) => {
+        generateImageUrl((imageUrl) => {
+          console.log(imageUrl);
+          resolve(imageUrl || 'https://deaconmeek.github.io/experientialradio/img/waaat.jpg');
+        });
+      });
+    }
+  }).then((imageUrl) => {
+    buildImageData(imageUrl).then((imageData) => {
+      if (!audioKey) {
+        filterImageData(imageData, 'blur');
+      }
+      filterImageData(imageData);
+      const mainCanvasEl = document.getElementById('main-image');
+      mainCanvasEl.getContext('2d').putImageData(imageData,0,0);
+      const imageContainerEl = document.getElementById('bg');
+      imageContainerEl.style.opacity = 1;
+
+      const mainCanvasAltEl = document.getElementById('main-image-alt');
+      mainCanvasAltEl.height = mainCanvasEl.height;
+      mainCanvasAltEl.width = mainCanvasEl.width;
+      filterImageData(imageData, 'invert');
+      mainCanvasAltEl.getContext('2d').putImageData(imageData,0,0);
+    })
+  });
+
+  const client = new XMLHttpRequest();
+  client.open('GET', 'https://deaconmeek.github.io/experientialradio/script.js');
+  client.onreadystatechange = function() {
+    _scriptLines = client.responseText.split('\n');
+  };
+  client.send();
 }
+
 if (document.readyState !== 'loading') {
   init();
 } else {
