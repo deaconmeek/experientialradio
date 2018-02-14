@@ -43,7 +43,6 @@ const GLITCH_SCORE_MOD = 50000;
 const CHAR_ITERATIONS = 15;
 
 let _scriptLines;
-let _allEls;
 let _question;
 let _initialQuestion;
 let _audioQuestion;
@@ -437,6 +436,9 @@ function init() {
 
   answerEl.addEventListener('click', munge);
   answerEl.addEventListener('click', _clickAnimationHandler);
+  answerEl.addEventListener('click', () => {
+    document.getElementById('beatz').play();
+  }, {once: true});
 
   if (audioKey) {
     setAudioMode(audioKey);
