@@ -3,7 +3,7 @@
 
 const hexChars = '0123456789ABCDEF';
 const htmlEls = ['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'b', 'base', 'basefont', 'bdi', 'bdo', 'bgsound', 'big', 'blink', 'blockquote', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'command', 'data', 'datalist', 'dd', 'details', 'dfn', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'header', 'hgroup', 'hr', 'i', 'iframe', 'input', 'isindex', 'kbd', 'keygen', 'label', 'legend', 'li', 'listing', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meta', 'meter', 'multicol', 'nav', 'nextid', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'picture', 'plaintext', 'pre', 'progress', 'q', 'rp', 's', 'samp', 'section', 'select', 'shadow', 'slot', 'small', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'xmp'];
-const imgFilters = ['circlesmear', 'diffusion', 'dither', 'noise', 'pixelate', 'posterize', 'solarize']; // 'invert', 'sepia',
+const imgFilters = ['circlesmear', 'diffusion', 'dither', 'noise', 'pixelate', 'posterize']; // 'invert', 'sepia', 'solarize'
 
 const phrases = [
   'Holy fuck', 'Conscientious objector', 'Unreasonable behaviour', 'Magnificent void', 'Reasonable doubt', 'Sound advice',
@@ -290,12 +290,13 @@ function buildImageData(url) {
   });
 }
 
-function filterImageData(imageData, filterToApply) {
+function filterImageData(imageData, filterToApply, props) {
+  props = props || {};
   if (!filterToApply) {
     filterToApply = imgFilters[(Math.random() * imgFilters.length)|0];
   }
   // console.log('filter', filterToApply);
-  JSManipulate[filterToApply].filter(imageData, {amount: 1});
+  JSManipulate[filterToApply].filter(imageData, props);
 }
 
 function generateQuestion(allowFromQueryParams) {
@@ -439,7 +440,7 @@ function init() {
   }).then((imageUrl) => {
     buildImageData(imageUrl).then((imageData) => {
       if (!audioKey) {
-        filterImageData(imageData, 'blur');
+        filterImageData(imageData, 'blur', {amount: 1});
       }
       filterImageData(imageData);
       const mainCanvasEl = document.getElementById('main-image');

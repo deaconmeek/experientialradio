@@ -104,12 +104,15 @@ body {
 }
 #answer {
   cursor: help;
-  font-size: 5vh;
+  font-size: 4vh;
   transition: color 0.2s;
 }
 @media screen and (min-device-width: 700px) {
   #question {
     font-size: 5vh;
     max-height: 6vh;
+  }
+  #answer {
+    font-size: 5vh;
   }
 }
