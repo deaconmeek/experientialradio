@@ -14,13 +14,10 @@ body {
   height: 12vh;
 }
 .words {
-  font-size: 4vh;
   color: aliceblue;
   overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis;
   display: block;
-  width: 90%;
   margin: 0 auto;
 }
 .noselect {
@@ -99,10 +96,20 @@ body {
 #question-link:hover {
   text-decoration: underline;
 }
-#answer {
+#question {
   vertical-align: top;
+  font-size: 4vh;
+  max-height: 5vh;
+  width: 90vw;
 }
 #answer {
   cursor: help;
+  font-size: 5vh;
   transition: color 0.2s;
+}
+@media screen and (min-device-width: 700px) {
+  #question {
+    font-size: 5vh;
+    max-height: 6vh;
+  }
 }
