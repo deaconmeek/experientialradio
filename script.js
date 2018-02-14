@@ -386,6 +386,7 @@ function padWord(word, length) {
 function init() {
   const questionLinkEl = document.getElementById('question-link');
   const answerEl = document.getElementById('answer');
+  const answerContainerEl = document.getElementById('answer-container');
   _initialQuestion = generateQuestion(true);
   _wordsBaseColor = answerEl.style.color;
   const nextQuestion = encodeURIComponent(generateQuestion());
@@ -413,9 +414,9 @@ function init() {
     answerEl.style.color = _wordsBaseColor;
   };
 
-  answerEl.addEventListener('click', munge);
-  answerEl.addEventListener('click', _clickAnimationHandler);
-  answerEl.addEventListener('click', () => {
+  answerContainerEl.addEventListener('click', munge);
+  answerContainerEl.addEventListener('click', _clickAnimationHandler);
+  answerContainerEl.addEventListener('click', () => {
     document.getElementById('beatz').play();
   }, {once: true});
 
