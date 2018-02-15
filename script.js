@@ -42,7 +42,7 @@ const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 20000;
 const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
-const VERSION = '1.0.3';
+const VERSION = '1.0.4';
 
 let _scriptLines;
 let _charsBaseColor;
@@ -88,7 +88,6 @@ function getRandomHtmlEl() {
   let el = document.createElement(randomElType);
   el.appendChild(clonedEl);
   el.setAttribute('style', 'z-index:10;font-size:' + size + 'px;color:' + color + ';position:absolute;top:' + y + ';left:' + x + ';width:' + w + ';height:' + h + ';');
-  el.addEventListener('click', munge);
   return el;
 }
 
@@ -374,15 +373,15 @@ function generateImageUrl(queryString, callback) {
 }
 
 function setGameStart() {
-  const mainImageEl = document.getElementById('main-image');
+  const codeContainerEl = document.getElementById('code-container');
   const tunesEl = document.getElementById('tunes');
   const scoreString = getBinaryScore();
   setChars(scoreString, 'score', 1000);
   flashBackground(5);
   playGlitch(1000);
   tunesEl.play();
-  mainImageEl.addEventListener('click', munge);
-  mainImageEl.style.cursor = 'pointer';
+  codeContainerEl.addEventListener('click', munge);
+  codeContainerEl.style.cursor = 'pointer';
 
   let paddedQuestion = _initialQuestion + '?'
   if (_nextAudioQuestion.length > paddedQuestion.length) {
