@@ -42,7 +42,7 @@ const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 20000;
 const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
-const VERSION = '1.0.2';
+const VERSION = '1.0.3';
 
 let _scriptLines;
 let _charsBaseColor;
@@ -57,7 +57,7 @@ let _score = 0;
 let _gameStart = false;
 let _preGameOver = false;
 let _gameOver = false;
-let _gameTimeStart = new Date();
+let _gameTimeStart;
 
 function getRandomColor() {
   let color = '#';
@@ -543,6 +543,9 @@ function initPreGameElements() {
     const el = e.target;
     if (el.style.color === 'black') {
       return;
+    }
+    if (!_gameTimeStart) {
+      _gameTimeStart = new Date();
     }
     playBeep();
     el.style.color = 'black';
