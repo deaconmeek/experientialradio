@@ -42,7 +42,7 @@ const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 20000;
 const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
-const VERSION = '1.0.4';
+const VERSION = '1.0.5';
 
 let _scriptLines;
 let _charsBaseColor;
@@ -87,7 +87,7 @@ function getRandomHtmlEl() {
   let randomElType = htmlEls[(Math.random() * htmlEls.length)|0];
   let el = document.createElement(randomElType);
   el.appendChild(clonedEl);
-  el.setAttribute('style', 'z-index:10;font-size:' + size + 'px;color:' + color + ';position:absolute;top:' + y + ';left:' + x + ';width:' + w + ';height:' + h + ';');
+  el.setAttribute('style', 'z-index:1;font-size:' + size + 'px;color:' + color + ';position:absolute;top:' + y + ';left:' + x + ';width:' + w + ';height:' + h + ';');
   return el;
 }
 
