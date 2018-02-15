@@ -64,6 +64,8 @@ body {
   text-align: left;
   margin-top: 0;
   font-size: 2vh;
+  z-index:100;
+  color: black;
 }
 .words-container {
   z-index: 100;

@@ -40,6 +40,7 @@ const audioMeta = {
 const DECELLERATION_INTERVAL = 1500;
 const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 20000;
+const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
 
 let _scriptLines;
@@ -55,6 +56,7 @@ let _score = 0;
 let _gameStart = false;
 let _preGameOver = false;
 let _gameOver = false;
+let _gameTimeStart = new Date();
 
 function getRandomColor() {
   let color = '#';
@@ -227,9 +229,21 @@ function mungeHtml() {
     '\n' + getScriptSnippet();
 }
 
-function printScore() {
+function finalizeScore() {
+
+  const totalTime = ((new Date() - _gameTimeStart) / 1000)|0;
+  const timeBonus = 5000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
+  _score += timeBonus;
+
+  if (_score > getHighScore()) {
+    document.cookie = HIGH_SCORE_COOKIE + '=' + _score + '; path=/';
+  }
+
   document.getElementById('code-container').innerText = document.getElementById('code-container').innerText +
-    '\nSCORE: ' + _score + '\nALL TIME HIGH: ' + getHighScore();
+    '\nTIME TAKEN: ' + totalTime + 's' +
+    '\nTIME BONUS: ' + timeBonus +
+    '\nSCORE: ' + _score +
+    '\nALL TIME HIGH: ' + getHighScore();
 }
 
 function changeQuestionLetter(changeColor) {
@@ -262,7 +276,11 @@ function changeQuestionLetter(changeColor) {
     spanEl.innerHTML =  newChar === ' ' ? '&nbsp;' : newChar;
     spanEl.style.color = changeColor ? getRandomColor() : _charsBaseColor;
     if (_preGameOver) {
-      spanEl.addEventListener("transitionend", setGameOver, {once: true});
+      spanEl.addEventListener("transitionend", () => {
+        if (!_gameOver) {
+          setGameOver();
+        }
+      }, {once: true});
     }
   });
 }
@@ -380,6 +398,7 @@ function setGameStart() {
 }
 
 function setGameOver() {
+  _gameOver = true;
   const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) +
     '?q=' + encodeURIComponent(_nextAudioQuestion.trim());
   const questionClickHandler = () => document.location = nextHref;
@@ -387,13 +406,13 @@ function setGameOver() {
     spanEl.style.cursor = 'pointer';
     spanEl.addEventListener('click', questionClickHandler);
   }
+  const codeEl = document.getElementById('code-container');
+  codeEl.style.cursor = 'pointer';
+  codeEl.addEventListener('click', () => {
+    codeEl.style.color = codeEl.style.color === 'black' ? 'white' : 'black';
+  });
   altBackground(Number.MAX_SAFE_INTEGER);
-  _gameOver = true;
-
-  if (_score > getHighScore()) {
-    document.cookie = HIGH_SCORE_COOKIE + '=' + _score + '; path=/';
-  }
-  printScore();
+  finalizeScore();
 }
 
 function getHighScore() {
