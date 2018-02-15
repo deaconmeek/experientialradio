@@ -42,7 +42,7 @@ const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 20000;
 const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 
 let _scriptLines;
 let _charsBaseColor;
@@ -138,7 +138,7 @@ function getScriptSnippet() {
 
 function playGlitch(duration) {
   const glitchEl = document.getElementById('glitch');
-  glitchEl.currentTime = (Math.random() * (glitchEl.duration - (duration / 1000)));
+  glitchEl.currentTime = (Math.random() * (glitchEl.duration - (duration / 1000)))|0;
   window.setTimeout(() => {
     glitchEl.play();
     window.setTimeout(() => {
