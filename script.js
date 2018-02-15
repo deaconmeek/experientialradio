@@ -1,4 +1,4 @@
-/* global document, window, XMLHttpRequest, console, JSManipulate, Promise */
+/* global document, window, XMLHttpRequest, JSManipulate, Promise */
 'use strict';
 
 const hexChars = '0123456789ABCDEF';
@@ -32,27 +32,28 @@ const audioMeta = {
   6: 'Know that I am god',
   7: 'Little red fox',
   8: 'Newage bullshit',
-  9: 'Scratchy tape town',
+  // 9: 'Scratchy tape town',
   10: 'Stereo checkout',
 };
 
 const DECELLERATION_INTERVAL = 1500;
-const MUNGE_START_SCORE = 5000;
 const MOMENTUM_LEVEL_3 = 15;
 const GLITCH_SCORE_MOD = 50000;
 const CHAR_ITERATIONS = 15;
+// const ANSWER_CLICK_TIMEOUT = 40000;
+const ANSWER_CLICK_TIMEOUT = 20000;
 
 let _scriptLines;
-let _question;
-let _wordsBaseColor;
-let _initialQuestion;
-let _audioQuestion;
-let _questionDeltaByCharIndex = {};
-let _answer = 'Experiential radio.';
+let _charsBaseColor;
+let _nextAudioQuestion;
+let _audioModeKey;
+let _questionDeltaByCharIndex;
+let _questionCharElByCharIndex;
+let _answerCharElByCharIndex;
 let _mungeMomentum = 0;
 let _score = 0;
+let _gameStart = false;
 let _gameOver = false;
-let _clickAnimationHandler;
 
 function getRandomColor() {
   let color = '#';
@@ -83,6 +84,7 @@ function getRandomHtmlEl() {
   let el = document.createElement(randomElType);
   el.appendChild(clonedEl);
   el.setAttribute('style', 'z-index:10;font-size:' + size + 'px;color:' + color + ';position:absolute;top:' + y + ';left:' + x + ';width:' + w + ';height:' + h + ';');
+  el.addEventListener('click', munge);
   return el;
 }
 
@@ -124,7 +126,11 @@ function cloneEl(el, elAttributes) {
 }
 
 function getScriptSnippet() {
-  return _scriptLines[(Math.random() * _scriptLines.length)|0].trim();
+  let snippet;
+  while (!snippet || snippet.length < 5) {
+    snippet = _scriptLines[(Math.random() * _scriptLines.length)|0].trim();
+  }
+  return snippet;
 }
 
 function playGlitch(duration) {
@@ -140,32 +146,18 @@ function playGlitch(duration) {
 }
 
 function munge() {
+  if (!_gameStart || _gameOver) {
+    return;
+  }
+
   updateMomentum(1);
   createDecellerationTimeout();
-
   const oldScore = _score;
-  _score += _mungeMomentum * _mungeMomentum * 10;
+  updateScore(_mungeMomentum * _mungeMomentum * 10)
 
-  // console.log('_score', _score);
-  if (_score < MUNGE_START_SCORE) {
-    return;
-  }
+  const changeColor = _mungeMomentum >= MOMENTUM_LEVEL_3;
+  changeQuestionLetter(changeColor);
 
-  if (_gameOver) {
-    return;
-  }
-
-  const wasGameOver = _gameOver;
-  mungeQuestionLetter();
-  // mungeAnswerLetter();
-  if (!wasGameOver && _gameOver) {
-    setGameOver();
-    return;
-  }
-
-  if (oldScore < MUNGE_START_SCORE && _score >= MUNGE_START_SCORE) {
-    setGameStart();
-  }
   if (oldScore % GLITCH_SCORE_MOD > _score % GLITCH_SCORE_MOD) {
     altBackground(2);
     playGlitch(300);
@@ -174,25 +166,21 @@ function munge() {
 }
 
 function updateMomentum(delta) {
-  const oldMomentum = _mungeMomentum;
   _mungeMomentum = Math.max(_mungeMomentum + delta, 0);
-  if (_mungeMomentum >= MOMENTUM_LEVEL_3) {
-    mungeQuestionColor(true);
-  } else if (oldMomentum >= MOMENTUM_LEVEL_3) {
-    mungeQuestionColor(false);
-  }
 }
 
-function setGameStart() {
-  if (_audioQuestion.length > _initialQuestion.length) {
-    _initialQuestion = padWord(_initialQuestion, _audioQuestion.length);
-  } else {
-    _audioQuestion = padWord(_audioQuestion, _initialQuestion.length);
+function getPaddedScore() {
+  let scoreString = String(_score);
+  while (scoreString.length < 9) {
+    scoreString = '0' + scoreString;
   }
-  setQuestion(_initialQuestion);
+  return scoreString;
+}
 
-  flashBackground(5);
-  playGlitch(1000);
+function updateScore(delta) {
+  _score = Math.max(_score + delta, 0);
+  const scoreString = getPaddedScore();
+  updateAnswerChars(scoreString, false);
 }
 
 function flashBackground(flashes) {
@@ -235,25 +223,25 @@ function mungeHtml() {
   document.getElementById('code-container').innerText = document.getElementById('code-container').innerText + '\n' + getScriptSnippet();
 }
 
-function mungeQuestionColor(multicolor) {
-  document.getElementById('question').setAttribute('style', 'color:' + (multicolor ? getRandomColor() : _wordsBaseColor));
-}
-
-function mungeQuestionLetter() {
+function changeQuestionLetter(changeColor) {
   let newChar;
   let charIndex;
-  while (!Number.isInteger(charIndex) || (_questionDeltaByCharIndex[charIndex] && _questionDeltaByCharIndex[charIndex] > CHAR_ITERATIONS)) {
-    charIndex = (Math.random() * _question.length)|0;
+  while (!Number.isInteger(charIndex) || (_questionDeltaByCharIndex[charIndex] > CHAR_ITERATIONS)) {
+    charIndex = (Math.random() * Object.keys(_questionDeltaByCharIndex).length)|0;
   }
-  _questionDeltaByCharIndex[charIndex] = _questionDeltaByCharIndex[charIndex] || 0;
   if (_questionDeltaByCharIndex[charIndex] === CHAR_ITERATIONS) {
-    newChar = _audioQuestion[charIndex];
+    newChar = _nextAudioQuestion[charIndex];
   } else {
     newChar = getRandomChar();
   }
   _questionDeltaByCharIndex[charIndex] += 1;
-  setQuestion(_question.substr(0, charIndex) + newChar + _question.substr(charIndex + 1));
-  _gameOver = Object.values(_questionDeltaByCharIndex).every(o => o > CHAR_ITERATIONS);
+  animateCharEl(_questionCharElByCharIndex[charIndex], () => {
+    _questionCharElByCharIndex[charIndex].innerHTML = newChar;
+    _questionCharElByCharIndex[charIndex].style.color = changeColor ? getRandomColor() : _charsBaseColor;
+    if (Object.values(_questionDeltaByCharIndex).every(o => o > CHAR_ITERATIONS)) {
+      setGameOver();
+    }
+  });
 }
 
 function getRandomChar() {
@@ -328,10 +316,10 @@ function generateQuestion(allowFromQueryParams) {
   return `${adjective} ${noun}`;
 }
 
-function generateImageUrl(callback) {
+function generateImageUrl(queryString, callback) {
   const xhr = new XMLHttpRequest();
-  const url = `https://us-central1-dazzling-inferno-8250.cloudfunctions.net/fetchImageUrl?question=${encodeURIComponent(_initialQuestion)}`;
-  // const url = `http://localhost:5000/dazzling-inferno-8250/us-central1/fetchImageUrl?question=${encodeURIComponent(_initialQuestion)}`;
+  const url = `https://us-central1-dazzling-inferno-8250.cloudfunctions.net/fetchImageUrl?question=${encodeURIComponent(queryString)}`;
+  // const url = `http://localhost:5000/dazzling-inferno-8250/us-central1/fetchImageUrl?question=${encodeURIComponent(queryString)}`;
   xhr.open('GET', url, true);
   xhr.onreadystatechange = function () {
     if(xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
@@ -342,37 +330,33 @@ function generateImageUrl(callback) {
   xhr.send();
 }
 
+function setGameStart() {
+  const mainImageEl = document.getElementById('main-image');
+  const tunesEl = document.getElementById('tunes');
+  const scoreString = getPaddedScore();
+  setChars(scoreString, 'answer');
+  flashBackground(5);
+  playGlitch(1000);
+  tunesEl.play();
+  mainImageEl.addEventListener('click', munge);
+  mainImageEl.style.cursor = 'pointer';
+  _questionDeltaByCharIndex = {};
+  for (const charIndex of Object.keys(_questionCharElByCharIndex)) {
+    _questionDeltaByCharIndex[charIndex] = 0;
+  }
+  _gameStart = true;
+}
+
 function setGameOver() {
-  const questionLinkEl = document.getElementById('question-link');
-  const answerEl = document.getElementById('answer');
-  const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + encodeURIComponent(_audioQuestion.trim());
-  questionLinkEl.setAttribute('href', nextHref);
-  setQuestion(_audioQuestion.trim(), true);
-  answerEl.style.cursor = 'default';
-  answerEl.removeEventListener('click', _clickAnimationHandler);
+  const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) +
+    '?q=' + encodeURIComponent(_nextAudioQuestion.trim());
+  const questionClickHandler = () => document.location.replace(nextHref);
+  setChars(_nextAudioQuestion.trim(), 'question', questionClickHandler);
   altBackground(Number.MAX_SAFE_INTEGER);
   // document.getElementById('question').setAttribute('style', 'background-color:black');
+  _gameOver = true;
 }
 
-function setAudioMode(audioIndex) {
-  const beatzEl = document.getElementById('beatz');
-  let audioFile;
-  if (audioIndex === '0') {
-    audioFile = 'audio/' + audioIndex + '.wav';
-  } else {
-    audioFile = 'audio/' + audioIndex + '.mp3';
-  }
-  beatzEl.setAttribute('src', audioFile);
-}
-
-function setQuestion(question) {
-  document.getElementById('question').innerHTML = question + '?';
-  _question = question;
-}
-function setAnswer(answer) {
-  document.getElementById('answer').innerHTML = answer;
-  _answer = answer;
-}
 function padWord(word, length) {
   while (word.length < length) {
     if ((length - word.length) % 2) {
@@ -384,54 +368,123 @@ function padWord(word, length) {
   return word;
 }
 
-function init() {
-  const questionLinkEl = document.getElementById('question-link');
-  const answerEl = document.getElementById('answer');
-  const answerContainerEl = document.getElementById('answer-container');
-  _initialQuestion = generateQuestion(true);
-  _wordsBaseColor = answerEl.style.color;
+// Assumes string is of same length as _answerCharElByCharIndex
+function updateAnswerChars(string, animate) {
+  const charEls = Object.values(_answerCharElByCharIndex);
+  for (const [i, char] of [...string].entries()) {
+    const spanEl = charEls[i];
+    if (animate) {
+      animateCharEl(spanEl, () => {
+        spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
+        spanEl.style.color = _charsBaseColor;
+      });
+    } else {
+      spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
+    }
+  }
+}
+
+function animateCharEl(el, callback) {
+  // el.classList.add('notransition'); // Disable transitions
+  el.style.color = 'black';
+  el.offsetHeight; // Trigger a reflow, flushing the CSS changes
+  // el.classList.remove('notransition'); // Re-enable transitions
+  el.addEventListener("transitionend", callback, {once: true});
+}
+
+function setChars(string, type, clickHandler) {
+  let containerEl;
+  let charElByCharIndex;
+  if (type === 'question') {
+    containerEl = document.getElementById('question-subcontainer');
+    _questionCharElByCharIndex = {};
+    charElByCharIndex = _questionCharElByCharIndex;
+  } else if (type === 'answer') {
+    containerEl = document.getElementById('answer-subcontainer');
+    _answerCharElByCharIndex = {};
+    charElByCharIndex = _answerCharElByCharIndex;
+  }
+
+  containerEl.innerHTML = '';
+  for (const [i, char] of [...string].entries()) {
+    const spanEl = document.createElement('span');
+    spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
+    spanEl.classList.add('chars');
+    spanEl.classList.add('noselect');
+    if (clickHandler) {
+      spanEl.style.cursor = 'pointer';
+      spanEl.addEventListener('click', clickHandler);
+    }
+    containerEl.appendChild(spanEl);
+    charElByCharIndex[i] = spanEl;
+  }
+}
+
+function initPreGameElements() {
+  const question = generateQuestion(true);
+
+  // Init next audio title
+  let audioTitle;
+  while (!audioTitle || audioTitle === question) {
+    const randomInt = Math.floor(Math.random() * Object.keys(audioMeta).length) + 1;
+    audioTitle = audioMeta[randomInt];
+  }
+  _nextAudioQuestion = audioTitle;
+
+  // Init question (relies on _nextAudioQuestion)
   const nextQuestion = encodeURIComponent(generateQuestion());
   const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + nextQuestion;
-  questionLinkEl.setAttribute('href', nextHref);
-  setQuestion(_initialQuestion);
-  setAnswer(_answer);
-
-  while (!_audioQuestion || _audioQuestion === _initialQuestion) {
-    const randomInt = Math.floor(Math.random() * Object.keys(audioMeta).length) + 1;
-    _audioQuestion = audioMeta[randomInt];
-  }
-
-  let audioKey;
-  if (Object.values(audioMeta).indexOf(_initialQuestion) >= 0) {
-    audioKey = Object.keys(audioMeta)[Object.values(audioMeta).indexOf(_initialQuestion)];
-  }
-
-  _clickAnimationHandler = function () {
-    // answerEl.classList.remove('fade');
-    answerEl.classList.add('notransition'); // Disable transitions
-    answerEl.style.color = 'black';
-    answerEl.offsetHeight; // Trigger a reflow, flushing the CSS changes
-    answerEl.classList.remove('notransition'); // Re-enable transitions
-    answerEl.style.color = _wordsBaseColor;
-  };
-
-  answerContainerEl.addEventListener('click', munge);
-  answerContainerEl.addEventListener('click', _clickAnimationHandler);
-  answerContainerEl.addEventListener('click', () => {
-    document.getElementById('beatz').play();
-  }, {once: true});
-
-  if (audioKey) {
-    setAudioMode(audioKey);
+  const questionClickHandler = () => document.location.replace(nextHref);
+  let paddedQuestion = question;
+  if (_nextAudioQuestion.length > question.length) {
+    paddedQuestion = padWord(question, _nextAudioQuestion.length);
   } else {
-    setAudioMode('0');
+    _nextAudioQuestion = padWord(_nextAudioQuestion, question.length);
   }
+  setChars(paddedQuestion, 'question', questionClickHandler);
+  _charsBaseColor = _questionCharElByCharIndex[0].style.color;
+
+  // Init answer
+  const answerClickHandler = function (e) {
+    const el = e.target;
+    el.style.color = 'black';
+    const answerCharEls = Object.values(_answerCharElByCharIndex);
+    const activateGame = answerCharEls.every(o => o.innerHTML === '&nbsp;' || o.style.color === 'black');
+    if (activateGame) {
+      for (const spanEl of answerCharEls) {
+        spanEl.removeEventListener('click', answerClickHandler);
+      }
+      setGameStart();
+    }
+    window.setTimeout(() => {
+      el.style.color = _charsBaseColor;
+    }, Math.max(((Math.random() * ANSWER_CLICK_TIMEOUT) | 0), 5));
+  };
+  const answer = 'Experiential radio.';
+  setChars(answer, 'answer', answerClickHandler);
+
+  // Init current audio track (relies on _initialQuestion)
+  if (Object.values(audioMeta).indexOf(question) >= 0) {
+    _audioModeKey = Object.keys(audioMeta)[Object.values(audioMeta).indexOf(question)];
+  } else {
+    _audioModeKey = '0';
+  }
+  const tunesEl = document.getElementById('tunes');
+  let audioFile;
+  if (_audioModeKey === '0') {
+    audioFile = 'audio/' + _audioModeKey + '.wav';
+  } else {
+    audioFile = 'audio/' + _audioModeKey + '.mp3';
+  }
+  tunesEl.setAttribute('src', audioFile);
+
+  // Init background image
   Promise.resolve().then(() => {
-    if (audioKey) {
-      return Promise.resolve('https://deaconmeek.github.io/experientialradio/img/' + audioKey + '.jpg');
+    if (_audioModeKey !== '0') {
+      return Promise.resolve('https://deaconmeek.github.io/experientialradio/img/' + _audioModeKey + '.jpg');
     } else {
       return new Promise((resolve) => {
-        generateImageUrl((imageUrl) => {
+        generateImageUrl(question, (imageUrl) => {
           // console.log(imageUrl);
           resolve(imageUrl || 'https://deaconmeek.github.io/experientialradio/img/waaat.jpg');
         });
@@ -439,7 +492,7 @@ function init() {
     }
   }).then((imageUrl) => {
     buildImageData(imageUrl).then((imageData) => {
-      if (!audioKey) {
+      if (!_audioModeKey) {
         filterImageData(imageData, 'blur', {amount: 1});
       }
       filterImageData(imageData);
@@ -456,6 +509,7 @@ function init() {
     })
   });
 
+  // Init _scriptLines
   const client = new XMLHttpRequest();
   client.open('GET', 'https://deaconmeek.github.io/experientialradio/script.js');
   client.onreadystatechange = function() {
@@ -464,10 +518,11 @@ function init() {
   client.send();
 }
 
+// Loader
 if (document.readyState !== 'loading') {
-  init();
+  initPreGameElements();
 } else {
   document.addEventListener('DOMContentLoaded', () => {
-    init();
+    initPreGameElements();
   });
 }

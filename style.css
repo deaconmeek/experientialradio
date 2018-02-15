@@ -8,25 +8,6 @@ body {
   overflow-y: hidden;
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
 }
-.words-container {
-  z-index: 100;
-  background-color: black;
-  height: 12vh;
-}
-.words {
-  color: aliceblue;
-  overflow: hidden;
-  white-space: nowrap;
-  display: block;
-  margin: 0 auto;
-}
-.noselect {
-  -webkit-touch-callout: none; /* iOS Safari */
-  -webkit-user-select: none; /* Safari */
-  -moz-user-select: none; /* Firefox */
-  -ms-user-select: none; /* Internet Explorer/Edge */
-  user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
-}
 .spread {
   position: fixed;
   top: -50%;
@@ -70,11 +51,30 @@ body {
   position: absolute;
   top: 12vh;
   left: 0;
-  width: 100%;
-  height: 100%;
   text-align: left;
   margin-top: 0;
   font-size: 2vh;
+}
+.words-container {
+  z-index: 100;
+  background-color: black;
+  height: 12vh;
+}
+.chars {
+  color: aliceblue;
+  font-size: 4vh;
+  vertical-align: middle;
+  cursor: default;
+  transition: color 0.1s;
+  min-height: 4vh;
+  display: inline-block;
+}
+.noselect {
+  -webkit-touch-callout: none; /* iOS Safari */
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
 }
 #question-container {
   position: absolute;
@@ -98,21 +98,15 @@ body {
 }
 #question {
   vertical-align: top;
-  font-size: 4vh;
   max-height: 5vh;
   width: 90vw;
 }
-#answer {
-  cursor: help;
-  font-size: 4vh;
-  transition: color 0.2s;
-}
+
 @media screen and (min-device-width: 700px) {
-  #question {
+  .words {
     font-size: 5vh;
-    max-height: 6vh;
   }
-  #answer {
-    font-size: 5vh;
+  #question {
+    max-height: 6vh;
   }
 }
