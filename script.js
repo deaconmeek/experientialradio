@@ -4,6 +4,7 @@
 const hexChars = '0123456789ABCDEF';
 const htmlEls = ['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'b', 'base', 'basefont', 'bdi', 'bdo', 'bgsound', 'big', 'blink', 'blockquote', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'command', 'data', 'datalist', 'dd', 'details', 'dfn', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'header', 'hgroup', 'hr', 'i', 'iframe', 'input', 'isindex', 'kbd', 'keygen', 'label', 'legend', 'li', 'listing', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meta', 'meter', 'multicol', 'nav', 'nextid', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'picture', 'plaintext', 'pre', 'progress', 'q', 'rp', 's', 'samp', 'section', 'select', 'shadow', 'slot', 'small', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'xmp'];
 const imgFilters = ['circlesmear', 'diffusion', 'dither', 'noise', 'pixelate', 'posterize']; // 'invert', 'sepia', 'solarize'
+const finalCharDeltaLookup = [10, 22, 13, 19, 16, 21, 23, 23, 23, 14, 14, 24, 25, 24, 15, 11, 17, 20, 21, 23, 12, 16, 22, 21, 11, 14, 19, 16, 18, 22, 21, 24, 11, 15, 18, 23, 13, 18, 19, 19, 23, 16, 15, 16, 13, 10, 12, 22, 22, 17];
 
 const phrases = [
   'Holy fuck', 'Conscientious objector', 'Unreasonable behaviour', 'Magnificent void', 'Reasonable doubt', 'Sound advice',
@@ -38,9 +39,8 @@ const audioMeta = {
 
 const DECELLERATION_INTERVAL = 1500;
 const MOMENTUM_BONUS_THRESHOLD = 15;
-const GLITCH_SCORE_MOD = 5000;
-const CHAR_ITERATIONS = 20;
 const ANSWER_CLICK_TIMEOUT = 20000;
+const HIGH_SCORE_COOKIE = 'alltimehigh';
 
 let _scriptLines;
 let _charsBaseColor;
@@ -157,17 +157,16 @@ function munge() {
 
   updateMomentum(1);
   createDecellerationTimeout();
-  const oldScore = _score;
   updateScore((_mungeMomentum * _mungeMomentum) + 1)
 
   const changeColor = _mungeMomentum >= MOMENTUM_BONUS_THRESHOLD;
   changeQuestionLetter(changeColor);
+}
 
-  if (oldScore % GLITCH_SCORE_MOD > _score % GLITCH_SCORE_MOD) {
-    altBackground(2);
-    playGlitch(300);
-    mungeHtml();
-  }
+function glitch() {
+  altBackground(2);
+  playGlitch(300);
+  mungeHtml();
 }
 
 function updateMomentum(delta) {
@@ -225,7 +224,13 @@ function altBackground(flashes) {
 
 function mungeHtml() {
   document.getElementsByTagName('body')[0].append(getRandomHtmlEl());
-  document.getElementById('code-container').innerText = document.getElementById('code-container').innerText + '\n' + getScriptSnippet();
+  document.getElementById('code-container').innerText = document.getElementById('code-container').innerText +
+    '\n' + getScriptSnippet();
+}
+
+function printScore() {
+  document.getElementById('code-container').innerText = document.getElementById('code-container').innerText +
+    '\nSCORE: ' + _score + '\nALL TIME HIGH: ' + getHighScore();
 }
 
 function changeQuestionLetter(changeColor) {
@@ -234,19 +239,28 @@ function changeQuestionLetter(changeColor) {
   }
   let newChar;
   let charIndex;
-  while (!_preGameOver && !Number.isInteger(charIndex) || (_questionDeltaByCharIndex[charIndex] > CHAR_ITERATIONS)) {
-    charIndex = (Math.random() * Object.keys(_questionDeltaByCharIndex).length)|0;
+  let finalCharDelta;
+  while (!Number.isInteger(charIndex)) {
+    const nextCharIndex = (Math.random() * Object.keys(_questionDeltaByCharIndex).length)|0;
+    finalCharDelta = finalCharDeltaLookup[nextCharIndex];
+    if (_questionDeltaByCharIndex[nextCharIndex] <= finalCharDelta) {
+      charIndex = nextCharIndex;
+    }
   }
-  if (_questionDeltaByCharIndex[charIndex] === CHAR_ITERATIONS) {
+  if (_questionDeltaByCharIndex[charIndex] === finalCharDelta) {
     newChar = _nextAudioQuestion[charIndex];
+    glitch();
   } else {
     newChar = getRandomChar();
   }
   _questionDeltaByCharIndex[charIndex] += 1;
-  _preGameOver = (Object.values(_questionDeltaByCharIndex).every(o => o > CHAR_ITERATIONS));
+  _preGameOver = (Object.keys(_questionDeltaByCharIndex).every((charIndex) => {
+    const delta = _questionDeltaByCharIndex[charIndex];
+    return delta > finalCharDeltaLookup[charIndex];
+  }));
   const spanEl = _questionCharElByCharIndex[charIndex];
   animateCharEl(spanEl, () => {
-    spanEl.innerHTML = newChar;
+    spanEl.innerHTML =  newChar === ' ' ? '&nbsp;' : newChar;
     spanEl.style.color = changeColor ? getRandomColor() : _charsBaseColor;
     if (_preGameOver) {
       spanEl.addEventListener("transitionend", setGameOver, {once: true});
@@ -351,12 +365,13 @@ function setGameStart() {
   mainImageEl.addEventListener('click', munge);
   mainImageEl.style.cursor = 'pointer';
 
-  if (_nextAudioQuestion.length > _initialQuestion.length) {
-    _initialQuestion = padWord(_initialQuestion, _nextAudioQuestion.length);
+  let paddedQuestion = _initialQuestion + '?'
+  if (_nextAudioQuestion.length > paddedQuestion.length) {
+    paddedQuestion = padWord(paddedQuestion, _nextAudioQuestion.length);
   } else {
-    _nextAudioQuestion = padWord(_nextAudioQuestion, _initialQuestion.length);
+    _nextAudioQuestion = padWord(_nextAudioQuestion, paddedQuestion.length);
   }
-  setChars(_initialQuestion, 'question', 0);
+  setChars(paddedQuestion, 'question', 0);
   _questionDeltaByCharIndex = {};
   for (const charIndex of Object.keys(_questionCharElByCharIndex)) {
     _questionDeltaByCharIndex[charIndex] = 0;
@@ -369,9 +384,30 @@ function setGameOver() {
   const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) +
     '?q=' + encodeURIComponent(_nextAudioQuestion.trim());
   const questionClickHandler = () => document.location = nextHref;
-  setChars(_nextAudioQuestion.trim(), 'question', 50, questionClickHandler);
+  for (const spanEl of Object.values(_questionCharElByCharIndex)) {
+    spanEl.style.cursor = 'pointer';
+    spanEl.addEventListener('click', questionClickHandler);
+  }
   altBackground(Number.MAX_SAFE_INTEGER);
   _gameOver = true;
+
+  if (_score > getHighScore()) {
+    document.cookie = HIGH_SCORE_COOKIE + '=' + _score + '; path=/';
+  }
+  printScore();
+}
+
+function getHighScore() {
+  let highScore;
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const key = cookie.trim().split('=')[0];
+    if (key === 'alltimehigh') {
+      highScore = cookie.split('=')[1];
+      break;
+    }
+  }
+  return parseInt(highScore, 10) || 0;
 }
 
 function padWord(word, length) {
@@ -474,13 +510,13 @@ function initPreGameElements() {
     audioTitle = audioMeta[randomInt];
   }
   _nextAudioQuestion = audioTitle;
-  _initialQuestion = newQuestion + '?';
+  _initialQuestion = newQuestion;
 
   // Init question (relies on _nextAudioQuestion)
   const nextQuestion = encodeURIComponent(generateQuestion());
   const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + nextQuestion;
   const questionClickHandler = () => document.location.replace(nextHref);
-  setChars(_initialQuestion, 'question', 1000, questionClickHandler);
+  setChars(_initialQuestion + '?', 'question', 1000, questionClickHandler);
   _charsBaseColor = _questionCharElByCharIndex[0].style.color;
 
   // Init answer
@@ -531,7 +567,7 @@ function initPreGameElements() {
     }
   }).then((imageUrl) => {
     buildImageData(imageUrl).then((imageData) => {
-      if (!_audioModeKey) {
+      if (_audioModeKey === '0') {
         filterImageData(imageData, 'blur', {amount: 1});
         filterImageData(imageData);
       }
