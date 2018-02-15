@@ -119,7 +119,6 @@ function cloneEl(el, elAttributes) {
   clonedEl.innerHTML = el.innerHTML ? el.innerHTML.replace(/id="[^"]+"/g, '') : ''; //.replace(/class="[^"]+"/g, '') : '';
   clonedEl.id = '';
   clonedEl.setAttribute('style', '');
-  clonedEl.className = 'noselect';
   if (clonedEl.hasChildNodes() && clonedEl.firstChild.tagName) {
     clonedEl.appendChild(cloneEl(clonedEl.firstChild, elAttributes));
   }
@@ -482,7 +481,6 @@ function setChars(string, type, displayDelay, clickHandler) {
     const spanEl = document.createElement('span');
     spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
     spanEl.classList.add('chars');
-    spanEl.classList.add('noselect');
     if (className) {
       spanEl.classList.add(className);
     }
