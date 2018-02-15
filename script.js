@@ -42,7 +42,7 @@ const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 20000;
 const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 
 let _scriptLines;
 let _charsBaseColor;
@@ -233,7 +233,7 @@ function mungeHtml() {
 function finalizeScore() {
 
   const totalTime = ((new Date() - _gameTimeStart) / 1000)|0;
-  const timeBonus = 5000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
+  const timeBonus = 2000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
   _score += timeBonus;
 
   if (_score > getHighScore()) {
