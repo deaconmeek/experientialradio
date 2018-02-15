@@ -42,6 +42,7 @@ const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 20000;
 const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
+const VERSION = '1.0.0';
 
 let _scriptLines;
 let _charsBaseColor;
@@ -243,7 +244,8 @@ function finalizeScore() {
     '\nTIME TAKEN: ' + totalTime + 's' +
     '\nTIME BONUS: ' + timeBonus +
     '\nSCORE: ' + _score +
-    '\nALL TIME HIGH: ' + getHighScore();
+    '\nALL TIME HIGH: ' + getHighScore() +
+    '\nv' + VERSION;
 }
 
 function changeQuestionLetter(changeColor) {
