@@ -1,10 +1,9 @@
 /* global document, window, XMLHttpRequest, JSManipulate, Promise */
 'use strict';
 
-const hexChars = '0123456789ABCDEF';
-const htmlEls = ['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'b', 'base', 'basefont', 'bdi', 'bdo', 'bgsound', 'big', 'blink', 'blockquote', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'command', 'data', 'datalist', 'dd', 'details', 'dfn', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'header', 'hgroup', 'hr', 'i', 'iframe', 'input', 'isindex', 'kbd', 'keygen', 'label', 'legend', 'li', 'listing', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meta', 'meter', 'multicol', 'nav', 'nextid', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'picture', 'plaintext', 'pre', 'progress', 'q', 'rp', 's', 'samp', 'section', 'select', 'shadow', 'slot', 'small', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'xmp'];
+const htmlEls = ['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'b', 'base', 'basefont', 'bdi', 'bdo', 'big', 'blink', 'blockquote', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'command', 'data', 'datalist', 'dd', 'details', 'dfn', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'header', 'hgroup', 'hr', 'i', 'iframe', 'input', 'isindex', 'kbd', 'keygen', 'label', 'legend', 'li', 'listing', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meta', 'meter', 'multicol', 'nav', 'nextid', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'picture', 'plaintext', 'pre', 'progress', 'q', 'rp', 's', 'samp', 'section', 'select', 'shadow', 'slot', 'small', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'xmp'];
 const imgFilters = ['circlesmear', 'diffusion', 'dither', 'noise', 'pixelate', 'posterize']; // 'invert', 'sepia', 'solarize'
-const finalCharDeltaLookup = [10, 22, 13, 19, 16, 21, 23, 23, 23, 14, 14, 24, 25, 24, 15, 11, 17, 20, 21, 23, 12, 16, 22, 21, 11, 14, 19, 16, 18, 22, 21, 24, 11, 15, 18, 23, 13, 18, 19, 19, 23, 16, 15, 16, 13, 10, 12, 22, 22, 17];
+const finalCharDeltaLookup = [10, 22, 13, 19, 16, 21, 23, 14, 24, 20, 24, 15, 11, 17, 20, 21, 23, 12, 16, 22, 21, 11, 14, 19, 16, 18, 22, 21, 24, 11, 15, 18, 23, 13, 18, 19, 19, 23, 16, 15, 16, 13, 10, 12, 22, 22, 17, 23, 23, 14];
 
 const phrases = [
   'Holy fuck', 'Conscientious objector', 'Unreasonable behaviour', 'Magnificent void', 'Reasonable doubt', 'Sound advice',
@@ -37,6 +36,14 @@ const audioMeta = {
   10: 'Stereo checkout',
 };
 
+const LEVEL = {
+  'prestart': 0,
+  'whackmole': 1,
+  'revealphrase': 2,
+  'pregameover': 3,
+  'gameover': 4,
+};
+
 const DECELLERATION_INTERVAL = 1500;
 const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 20000;
@@ -44,27 +51,15 @@ const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
 const VERSION = '1.0.5';
 
-let _scriptLines;
-let _charsBaseColor;
-let _initialQuestion;
-let _nextAudioQuestion;
-let _audioModeKey;
-let _questionDeltaByCharIndex;
-let _questionCharElByCharIndex;
-let _answerCharElByCharIndex;
-let _mungeMomentum = 0;
-let _score = 0;
-let _gameStart = false;
-let _preGameOver = false;
-let _gameOver = false;
-let _gameTimeStart;
+
+const state = {
+  momentum: 0,
+  score: 0,
+  level: 0,
+};
 
 function getRandomColor() {
-  let color = '#';
-  for (let i = 0; i < 6; i += 1) {
-    color += hexChars[(Math.random() * 16)|0];
-  }
-  return color;
+  return '#'+((Math.random()*0x777777) + 0x666666).toString(16).slice(-6);
 }
 
 function getRandomHtmlEl() {
@@ -130,7 +125,7 @@ function cloneEl(el, elAttributes) {
 function getScriptSnippet() {
   let snippet;
   while (!snippet || snippet.length < 5) {
-    snippet = _scriptLines[(Math.random() * _scriptLines.length)|0].trim();
+    snippet = state.scriptLines[(Math.random() * state.scriptLines.length)|0].trim();
   }
   return snippet;
 }
@@ -152,15 +147,15 @@ function playBeep() {
 }
 
 function munge() {
-  if (!_gameStart || _gameOver) {
+  if (state.level !== LEVEL.revealphrase) {
     return;
   }
 
   updateMomentum(1);
   createDecellerationTimeout();
-  updateScore((_mungeMomentum * _mungeMomentum) + 1)
+  updateScore((state.momentum * state.momentum) + 1)
 
-  const changeColor = _mungeMomentum >= MOMENTUM_BONUS_THRESHOLD;
+  const changeColor = state.momentum >= MOMENTUM_BONUS_THRESHOLD;
   changeQuestionLetter(changeColor);
 }
 
@@ -171,11 +166,11 @@ function glitch() {
 }
 
 function updateMomentum(delta) {
-  _mungeMomentum = Math.max(_mungeMomentum + delta, 0);
+  state.momentum = Math.max(state.momentum + delta, 0);
 }
 
 function getBinaryScore() {
-  let scoreString = _score.toString(2);
+  let scoreString = state.score.toString(2);
   while (scoreString.length < 20) {
     scoreString = '0' + scoreString;
   }
@@ -183,7 +178,7 @@ function getBinaryScore() {
 }
 
 function updateScore(delta) {
-  _score = Math.max(_score + delta, 0);
+  state.score = Math.max(state.score + delta, 0);
   const scoreString = getBinaryScore();
   updateAnswerChars(scoreString, true);
 }
@@ -231,54 +226,56 @@ function mungeHtml() {
 
 function finalizeScore() {
 
-  const totalTime = ((new Date() - _gameTimeStart) / 1000)|0;
+  const totalTime = ((new Date() - state.gameTimeStart) / 1000)|0;
   const timeBonus = 2000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
-  _score += timeBonus;
+  state.score += timeBonus;
 
-  if (_score > getHighScore()) {
-    document.cookie = HIGH_SCORE_COOKIE + '=' + _score + '; path=/';
+  if (state.score > getHighScore()) {
+    document.cookie = HIGH_SCORE_COOKIE + '=' + state.score + '; path=/';
   }
 
   document.getElementById('code-container').innerText = document.getElementById('code-container').innerText +
     '\nTIME TAKEN: ' + totalTime + 's' +
     '\nTIME BONUS: ' + timeBonus +
-    '\nSCORE: ' + _score +
+    '\nSCORE: ' + state.score +
     '\nALL TIME HIGH: ' + getHighScore() +
     '\nv' + VERSION;
 }
 
 function changeQuestionLetter(changeColor) {
-  if (_preGameOver) {
+  if (state.level !== LEVEL.revealphrase) {
     return;
   }
   let newChar;
   let charIndex;
   let finalCharDelta;
   while (!Number.isInteger(charIndex)) {
-    const nextCharIndex = (Math.random() * Object.keys(_questionDeltaByCharIndex).length)|0;
+    const nextCharIndex = (Math.random() * Object.keys(state.questionDeltaByCharIndex).length)|0;
     finalCharDelta = finalCharDeltaLookup[nextCharIndex];
-    if (_questionDeltaByCharIndex[nextCharIndex] <= finalCharDelta) {
+    if (state.questionDeltaByCharIndex[nextCharIndex] <= finalCharDelta) {
       charIndex = nextCharIndex;
     }
   }
-  if (_questionDeltaByCharIndex[charIndex] === finalCharDelta) {
-    newChar = _nextAudioQuestion[charIndex];
+  if (state.questionDeltaByCharIndex[charIndex] === finalCharDelta) {
+    newChar = state.nextAudioQuestion[charIndex];
     glitch();
   } else {
     newChar = getRandomChar();
   }
-  _questionDeltaByCharIndex[charIndex] += 1;
-  _preGameOver = (Object.keys(_questionDeltaByCharIndex).every((charIndex) => {
-    const delta = _questionDeltaByCharIndex[charIndex];
-    return delta > finalCharDeltaLookup[charIndex];
+  state.questionDeltaByCharIndex[charIndex] += 1;
+  const finishedLevel = (Object.keys(state.questionDeltaByCharIndex).every((charIndex) => {
+    return state.questionDeltaByCharIndex[charIndex] > finalCharDeltaLookup[charIndex];
   }));
-  const spanEl = _questionCharElByCharIndex[charIndex];
+  if (finishedLevel) {
+    state.level = LEVEL.pregameover;
+  }
+  const spanEl = state.questionCharElByCharIndex[charIndex];
   animateCharEl(spanEl, () => {
     spanEl.innerHTML =  newChar === ' ' ? '&nbsp;' : newChar;
-    spanEl.style.color = changeColor ? getRandomColor() : _charsBaseColor;
-    if (_preGameOver) {
+    spanEl.style.color = changeColor ? getRandomColor() : state.charsBaseColor;
+    if (state.level === LEVEL.pregameover) {
       spanEl.addEventListener("transitionend", () => {
-        if (!_gameOver) {
+        if (state.level !== LEVEL.gameover) {
           setGameOver();
         }
       }, {once: true});
@@ -287,7 +284,7 @@ function changeQuestionLetter(changeColor) {
 }
 
 function getRandomChar() {
-  const unicodeBracket = unicodeBrackets[(Math.random() * Math.min(_mungeMomentum, 10))|0];
+  const unicodeBracket = unicodeBrackets[(Math.random() * Math.min(state.momentum, 10))|0];
   const startingInt = parseInt(unicodeBracket[0], 16);
   const range = parseInt(unicodeBracket[1], 16);
   const randomInt = startingInt + ((Math.random() * range)|0);
@@ -297,7 +294,7 @@ function getRandomChar() {
 function createDecellerationTimeout() {
   window.setTimeout(() => {
     updateMomentum(-1);
-    // console.log(_mungeMomentum);
+    // console.log(state.momentum);
   }, DECELLERATION_INTERVAL);
 }
 
@@ -383,27 +380,27 @@ function setGameStart() {
   codeContainerEl.addEventListener('click', munge);
   codeContainerEl.style.cursor = 'pointer';
 
-  let paddedQuestion = _initialQuestion + '?'
-  if (_nextAudioQuestion.length > paddedQuestion.length) {
-    paddedQuestion = padWord(paddedQuestion, _nextAudioQuestion.length);
+  let paddedQuestion = state.initialQuestion + '?'
+  if (state.nextAudioQuestion.length > paddedQuestion.length) {
+    paddedQuestion = padWord(paddedQuestion, state.nextAudioQuestion.length);
   } else {
-    _nextAudioQuestion = padWord(_nextAudioQuestion, paddedQuestion.length);
+    state.nextAudioQuestion = padWord(state.nextAudioQuestion, paddedQuestion.length);
   }
   setChars(paddedQuestion, 'question', 0);
-  _questionDeltaByCharIndex = {};
-  for (const charIndex of Object.keys(_questionCharElByCharIndex)) {
-    _questionDeltaByCharIndex[charIndex] = 0;
+  state.questionDeltaByCharIndex = {};
+  for (const charIndex of Object.keys(state.questionCharElByCharIndex)) {
+    state.questionDeltaByCharIndex[charIndex] = 0;
   }
 
-  _gameStart = true;
+  state.level = LEVEL.whackmole;
 }
 
 function setGameOver() {
-  _gameOver = true;
+  state.level = LEVEL.gameover;
   const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) +
-    '?q=' + encodeURIComponent(_nextAudioQuestion.trim());
+    '?q=' + encodeURIComponent(state.nextAudioQuestion.trim());
   const questionClickHandler = () => document.location = nextHref;
-  for (const spanEl of Object.values(_questionCharElByCharIndex)) {
+  for (const spanEl of Object.values(state.questionCharElByCharIndex)) {
     spanEl.style.cursor = 'pointer';
     spanEl.addEventListener('click', questionClickHandler);
   }
@@ -440,9 +437,9 @@ function padWord(word, length) {
   return word;
 }
 
-// Assumes string is of same length as _answerCharElByCharIndex
+// Assumes string is of same length as state.answerCharElByCharIndex
 function updateAnswerChars(string, animate) {
-  const charEls = Object.values(_answerCharElByCharIndex);
+  const charEls = Object.values(state.answerCharElByCharIndex);
   for (const [i, char] of [...string].entries()) {
     const spanEl = charEls[i];
     if (spanEl.innerHTML === char) {
@@ -451,7 +448,7 @@ function updateAnswerChars(string, animate) {
     if (animate) {
       animateCharEl(spanEl, () => {
         spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
-        spanEl.style.color = _charsBaseColor;
+        spanEl.style.color = state.charsBaseColor;
       });
     } else {
       spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
@@ -483,16 +480,16 @@ function setChars(string, type, displayDelay, clickHandler) {
   let className;
   if (type === 'question') {
     containerEl = document.getElementById('question-subcontainer');
-    _questionCharElByCharIndex = {};
-    charElByCharIndex = _questionCharElByCharIndex;
+    state.questionCharElByCharIndex = {};
+    charElByCharIndex = state.questionCharElByCharIndex;
   } else if (type === 'answer') {
     containerEl = document.getElementById('answer-subcontainer');
-    _answerCharElByCharIndex = {};
-    charElByCharIndex = _answerCharElByCharIndex;
+    state.answerCharElByCharIndex = {};
+    charElByCharIndex = state.answerCharElByCharIndex;
   } else if (type === 'score') {
     containerEl = document.getElementById('answer-subcontainer');
-    _answerCharElByCharIndex = {};
-    charElByCharIndex = _answerCharElByCharIndex;
+    state.answerCharElByCharIndex = {};
+    charElByCharIndex = state.answerCharElByCharIndex;
     className = 'preformatted';
   }
 
@@ -518,7 +515,7 @@ function setChars(string, type, displayDelay, clickHandler) {
   }, displayDelay);
 }
 
-function initPreGameElements() {
+function init() {
   const newQuestion = generateQuestion(true);
 
   // Init next audio title
@@ -527,15 +524,15 @@ function initPreGameElements() {
     const randomInt = Math.floor(Math.random() * Object.keys(audioMeta).length) + 1;
     audioTitle = audioMeta[randomInt];
   }
-  _nextAudioQuestion = audioTitle;
-  _initialQuestion = newQuestion;
+  state.nextAudioQuestion = audioTitle;
+  state.initialQuestion = newQuestion;
 
-  // Init question (relies on _nextAudioQuestion)
+  // Init question (relies on state.nextAudioQuestion)
   const nextQuestion = encodeURIComponent(generateQuestion());
   const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + nextQuestion;
   const questionClickHandler = () => document.location.replace(nextHref);
-  setChars(_initialQuestion + '?', 'question', 1000, questionClickHandler);
-  _charsBaseColor = _questionCharElByCharIndex[0].style.color;
+  setChars(state.initialQuestion + '?', 'question', 1000, questionClickHandler);
+  state.charsBaseColor = state.questionCharElByCharIndex[0].style.color;
 
   // Init answer
   const answerClickHandler = function (e) {
@@ -543,12 +540,12 @@ function initPreGameElements() {
     if (el.style.color === 'black') {
       return;
     }
-    if (!_gameTimeStart) {
-      _gameTimeStart = new Date();
+    if (!state.gameTimeStart) {
+      state.gameTimeStart = new Date();
     }
     playBeep();
     el.style.color = 'black';
-    const answerCharEls = Object.values(_answerCharElByCharIndex);
+    const answerCharEls = Object.values(state.answerCharElByCharIndex);
     const activateGame = answerCharEls.every(o => o.innerHTML === '&nbsp;' || o.style.color === 'black');
     if (activateGame) {
       for (const spanEl of answerCharEls) {
@@ -557,30 +554,30 @@ function initPreGameElements() {
       setGameStart();
     }
     window.setTimeout(() => {
-      el.style.color = _charsBaseColor;
+      el.style.color = state.charsBaseColor;
     }, Math.max(((Math.random() * ANSWER_CLICK_TIMEOUT) | 0), 2000));
   };
   const answer = 'Experiential radio.';
   setChars(answer, 'answer', 2000, answerClickHandler);
 
-  // Init current audio track (relies on _initialQuestion)
-  if (Object.values(audioMeta).indexOf(_initialQuestion) >= 0) {
-    _audioModeKey = Object.keys(audioMeta)[Object.values(audioMeta).indexOf(_initialQuestion)];
+  // Init current audio track (relies on state.initialQuestion)
+  if (Object.values(audioMeta).indexOf(state.initialQuestion) >= 0) {
+    state.audioModeKey = Object.keys(audioMeta)[Object.values(audioMeta).indexOf(state.initialQuestion)];
   } else {
-    _audioModeKey = '0';
+    state.audioModeKey = '0';
   }
   const tunesEl = document.getElementById('tunes');
   let audioFile;
-  audioFile = 'audio/' + _audioModeKey + '.mp3';
+  audioFile = 'audio/' + state.audioModeKey + '.mp3';
   tunesEl.setAttribute('src', audioFile);
 
   // Init background image
   Promise.resolve().then(() => {
-    if (_audioModeKey !== '0') {
-      return Promise.resolve('https://deaconmeek.github.io/experientialradio/img/' + _audioModeKey + '.jpg');
+    if (state.audioModeKey !== '0') {
+      return Promise.resolve('https://deaconmeek.github.io/experientialradio/img/' + state.audioModeKey + '.jpg');
     } else {
       return new Promise((resolve) => {
-        generateImageUrl(_initialQuestion, (imageUrl) => {
+        generateImageUrl(state.initialQuestion, (imageUrl) => {
           // console.log(imageUrl);
           resolve(imageUrl || 'https://deaconmeek.github.io/experientialradio/img/waaat.jpg');
         });
@@ -588,7 +585,7 @@ function initPreGameElements() {
     }
   }).then((imageUrl) => {
     buildImageData(imageUrl).then((imageData) => {
-      if (_audioModeKey === '0') {
+      if (state.audioModeKey === '0') {
         filterImageData(imageData, 'blur', {amount: 1});
         filterImageData(imageData);
       }
@@ -605,20 +602,20 @@ function initPreGameElements() {
     })
   });
 
-  // Init _scriptLines
+  // Init state.scriptLines
   const client = new XMLHttpRequest();
   client.open('GET', 'https://deaconmeek.github.io/experientialradio/script.js');
   client.onreadystatechange = function() {
-    _scriptLines = client.responseText.split('\n');
+    state.scriptLines = client.responseText.split('\n');
   };
   client.send();
 }
 
 // Loader
 if (document.readyState !== 'loading') {
-  initPreGameElements();
+  init();
 } else {
   document.addEventListener('DOMContentLoaded', () => {
-    initPreGameElements();
+    init();
   });
 }
