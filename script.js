@@ -37,13 +37,14 @@ const audioMeta = {
 };
 
 const DECELLERATION_INTERVAL = 1500;
-const MOMENTUM_LEVEL_3 = 15;
-const GLITCH_SCORE_MOD = 50000;
-const CHAR_ITERATIONS = 15;
-const ANSWER_CLICK_TIMEOUT = 30000;
+const MOMENTUM_BONUS_THRESHOLD = 15;
+const GLITCH_SCORE_MOD = 5000;
+const CHAR_ITERATIONS = 20;
+const ANSWER_CLICK_TIMEOUT = 20000;
 
 let _scriptLines;
 let _charsBaseColor;
+let _initialQuestion;
 let _nextAudioQuestion;
 let _audioModeKey;
 let _questionDeltaByCharIndex;
@@ -52,6 +53,7 @@ let _answerCharElByCharIndex;
 let _mungeMomentum = 0;
 let _score = 0;
 let _gameStart = false;
+let _preGameOver = false;
 let _gameOver = false;
 
 function getRandomColor() {
@@ -90,17 +92,17 @@ function getRandomHtmlEl() {
 function deepCloneEl(el) {
   const elAttributes = {};
   const clonedEl = cloneEl(el, elAttributes);
-  let traversedEl = clonedEl;
-  while (traversedEl) {
-    if (traversedEl.tagName === 'CANVAS' && elAttributes.imageData) {
-      traversedEl.getContext('2d').putImageData(elAttributes.imageData, 0, 0);
-    } else if (traversedEl.tagName === 'AUDIO' && elAttributes.src) {
-      traversedEl.setAttribute('src', elAttributes.src);
-      traversedEl.setAttribute('autoplay', true);
-    } else if (traversedEl.tagName === 'IFRAME') {
-      traversedEl.setAttribute('src', 'index.html');
+  let childEl = clonedEl;
+  while (childEl) {
+    if (childEl.tagName === 'CANVAS' && elAttributes.imageData) {
+      childEl.getContext('2d').putImageData(elAttributes.imageData, 0, 0);
+    } else if (childEl.tagName === 'AUDIO' && elAttributes.src) {
+      childEl.setAttribute('src', elAttributes.src);
+      childEl.setAttribute('autoplay', true);
+    } else if (childEl.tagName === 'IFRAME') {
+      childEl.setAttribute('src', 'index.html');
     }
-    traversedEl = (traversedEl.hasChildNodes() && traversedEl.firstChild.tagName) ? traversedEl.firstChild : null;
+    childEl = (childEl.hasChildNodes() && childEl.firstChild.tagName) ? childEl.firstChild : null;
   }
   return clonedEl;
 }
@@ -117,7 +119,7 @@ function cloneEl(el, elAttributes) {
   clonedEl.innerHTML = el.innerHTML ? el.innerHTML.replace(/id="[^"]+"/g, '') : ''; //.replace(/class="[^"]+"/g, '') : '';
   clonedEl.id = '';
   clonedEl.setAttribute('style', '');
-  clonedEl.className = '';
+  clonedEl.className = 'noselect';
   if (clonedEl.hasChildNodes() && clonedEl.firstChild.tagName) {
     clonedEl.appendChild(cloneEl(clonedEl.firstChild, elAttributes));
   }
@@ -135,13 +137,17 @@ function getScriptSnippet() {
 function playGlitch(duration) {
   const glitchEl = document.getElementById('glitch');
   glitchEl.currentTime = (Math.random() * (glitchEl.duration - (duration / 1000)));
-  glitchEl.volume = 0.8;
   window.setTimeout(() => {
     glitchEl.play();
     window.setTimeout(() => {
       glitchEl.pause();
     }, duration);
   }, 100);
+}
+
+function playBeep() {
+  const beepEl = document.getElementById('beep');
+  beepEl.play();
 }
 
 function munge() {
@@ -152,9 +158,9 @@ function munge() {
   updateMomentum(1);
   createDecellerationTimeout();
   const oldScore = _score;
-  updateScore(_mungeMomentum * _mungeMomentum * 10)
+  updateScore((_mungeMomentum * _mungeMomentum) + 1)
 
-  const changeColor = _mungeMomentum >= MOMENTUM_LEVEL_3;
+  const changeColor = _mungeMomentum >= MOMENTUM_BONUS_THRESHOLD;
   changeQuestionLetter(changeColor);
 
   if (oldScore % GLITCH_SCORE_MOD > _score % GLITCH_SCORE_MOD) {
@@ -168,9 +174,9 @@ function updateMomentum(delta) {
   _mungeMomentum = Math.max(_mungeMomentum + delta, 0);
 }
 
-function getPaddedScore() {
-  let scoreString = String(_score);
-  while (scoreString.length < 9) {
+function getBinaryScore() {
+  let scoreString = _score.toString(2);
+  while (scoreString.length < 20) {
     scoreString = '0' + scoreString;
   }
   return scoreString;
@@ -178,8 +184,8 @@ function getPaddedScore() {
 
 function updateScore(delta) {
   _score = Math.max(_score + delta, 0);
-  const scoreString = getPaddedScore();
-  updateAnswerChars(scoreString, false);
+  const scoreString = getBinaryScore();
+  updateAnswerChars(scoreString, true);
 }
 
 function flashBackground(flashes) {
@@ -223,9 +229,12 @@ function mungeHtml() {
 }
 
 function changeQuestionLetter(changeColor) {
+  if (_preGameOver) {
+    return;
+  }
   let newChar;
   let charIndex;
-  while (!Number.isInteger(charIndex) || (_questionDeltaByCharIndex[charIndex] > CHAR_ITERATIONS)) {
+  while (!_preGameOver && !Number.isInteger(charIndex) || (_questionDeltaByCharIndex[charIndex] > CHAR_ITERATIONS)) {
     charIndex = (Math.random() * Object.keys(_questionDeltaByCharIndex).length)|0;
   }
   if (_questionDeltaByCharIndex[charIndex] === CHAR_ITERATIONS) {
@@ -234,11 +243,13 @@ function changeQuestionLetter(changeColor) {
     newChar = getRandomChar();
   }
   _questionDeltaByCharIndex[charIndex] += 1;
-  animateCharEl(_questionCharElByCharIndex[charIndex], () => {
-    _questionCharElByCharIndex[charIndex].innerHTML = newChar;
-    _questionCharElByCharIndex[charIndex].style.color = changeColor ? getRandomColor() : _charsBaseColor;
-    if (Object.values(_questionDeltaByCharIndex).every(o => o > CHAR_ITERATIONS)) {
-      setGameOver();
+  _preGameOver = (Object.values(_questionDeltaByCharIndex).every(o => o > CHAR_ITERATIONS));
+  const spanEl = _questionCharElByCharIndex[charIndex];
+  animateCharEl(spanEl, () => {
+    spanEl.innerHTML = newChar;
+    spanEl.style.color = changeColor ? getRandomColor() : _charsBaseColor;
+    if (_preGameOver) {
+      spanEl.addEventListener("transitionend", setGameOver, {once: true});
     }
   });
 }
@@ -332,27 +343,34 @@ function generateImageUrl(queryString, callback) {
 function setGameStart() {
   const mainImageEl = document.getElementById('main-image');
   const tunesEl = document.getElementById('tunes');
-  const scoreString = getPaddedScore();
-  setChars(scoreString, 'answer');
+  const scoreString = getBinaryScore();
+  setChars(scoreString, 'score', 1000);
   flashBackground(5);
   playGlitch(1000);
   tunesEl.play();
   mainImageEl.addEventListener('click', munge);
   mainImageEl.style.cursor = 'pointer';
+
+  if (_nextAudioQuestion.length > _initialQuestion.length) {
+    _initialQuestion = padWord(_initialQuestion, _nextAudioQuestion.length);
+  } else {
+    _nextAudioQuestion = padWord(_nextAudioQuestion, _initialQuestion.length);
+  }
+  setChars(_initialQuestion, 'question', 0);
   _questionDeltaByCharIndex = {};
   for (const charIndex of Object.keys(_questionCharElByCharIndex)) {
     _questionDeltaByCharIndex[charIndex] = 0;
   }
+
   _gameStart = true;
 }
 
 function setGameOver() {
   const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) +
     '?q=' + encodeURIComponent(_nextAudioQuestion.trim());
-  const questionClickHandler = () => document.location.replace(nextHref);
-  setChars(_nextAudioQuestion.trim(), 'question', questionClickHandler);
+  const questionClickHandler = () => document.location = nextHref;
+  setChars(_nextAudioQuestion.trim(), 'question', 50, questionClickHandler);
   altBackground(Number.MAX_SAFE_INTEGER);
-  // document.getElementById('question').setAttribute('style', 'background-color:black');
   _gameOver = true;
 }
 
@@ -372,6 +390,9 @@ function updateAnswerChars(string, animate) {
   const charEls = Object.values(_answerCharElByCharIndex);
   for (const [i, char] of [...string].entries()) {
     const spanEl = charEls[i];
+    if (spanEl.innerHTML === char) {
+      continue;
+    }
     if (animate) {
       animateCharEl(spanEl, () => {
         spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
@@ -388,12 +409,23 @@ function animateCharEl(el, callback) {
   el.style.color = 'black';
   el.offsetHeight; // Trigger a reflow, flushing the CSS changes
   // el.classList.remove('notransition'); // Re-enable transitions
-  el.addEventListener("transitionend", callback, {once: true});
+  let done = false;
+  let errorHandler;
+  let callbackHandler = () => {
+    if (!done) {
+      done = true;
+      window.clearTimeout(errorHandler);
+      return callback();
+    }
+  }
+  errorHandler = window.setTimeout(callbackHandler, 500);
+  el.addEventListener("transitionend", callbackHandler, {once: true});
 }
 
-function setChars(string, type, clickHandler) {
+function setChars(string, type, displayDelay, clickHandler) {
   let containerEl;
   let charElByCharIndex;
+  let className;
   if (type === 'question') {
     containerEl = document.getElementById('question-subcontainer');
     _questionCharElByCharIndex = {};
@@ -402,6 +434,11 @@ function setChars(string, type, clickHandler) {
     containerEl = document.getElementById('answer-subcontainer');
     _answerCharElByCharIndex = {};
     charElByCharIndex = _answerCharElByCharIndex;
+  } else if (type === 'score') {
+    containerEl = document.getElementById('answer-subcontainer');
+    _answerCharElByCharIndex = {};
+    charElByCharIndex = _answerCharElByCharIndex;
+    className = 'preformatted';
   }
 
   containerEl.innerHTML = '';
@@ -410,6 +447,9 @@ function setChars(string, type, clickHandler) {
     spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
     spanEl.classList.add('chars');
     spanEl.classList.add('noselect');
+    if (className) {
+      spanEl.classList.add(className);
+    }
     if (clickHandler) {
       spanEl.style.cursor = 'pointer';
       spanEl.addEventListener('click', clickHandler);
@@ -417,35 +457,39 @@ function setChars(string, type, clickHandler) {
     containerEl.appendChild(spanEl);
     charElByCharIndex[i] = spanEl;
   }
+  window.setTimeout(() => {
+    for (const i of Object.keys(charElByCharIndex)) {
+      charElByCharIndex[i].style.opacity = 1;
+    }
+  }, displayDelay);
 }
 
 function initPreGameElements() {
-  const question = generateQuestion(true);
+  const newQuestion = generateQuestion(true);
 
   // Init next audio title
   let audioTitle;
-  while (!audioTitle || audioTitle === question) {
+  while (!audioTitle || audioTitle === newQuestion) {
     const randomInt = Math.floor(Math.random() * Object.keys(audioMeta).length) + 1;
     audioTitle = audioMeta[randomInt];
   }
   _nextAudioQuestion = audioTitle;
+  _initialQuestion = newQuestion + '?';
 
   // Init question (relies on _nextAudioQuestion)
   const nextQuestion = encodeURIComponent(generateQuestion());
   const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + nextQuestion;
   const questionClickHandler = () => document.location.replace(nextHref);
-  let paddedQuestion = question;
-  if (_nextAudioQuestion.length > question.length) {
-    paddedQuestion = padWord(question, _nextAudioQuestion.length);
-  } else {
-    _nextAudioQuestion = padWord(_nextAudioQuestion, question.length);
-  }
-  setChars(paddedQuestion, 'question', questionClickHandler);
+  setChars(_initialQuestion, 'question', 1000, questionClickHandler);
   _charsBaseColor = _questionCharElByCharIndex[0].style.color;
 
   // Init answer
   const answerClickHandler = function (e) {
     const el = e.target;
+    if (el.style.color === 'black') {
+      return;
+    }
+    playBeep();
     el.style.color = 'black';
     const answerCharEls = Object.values(_answerCharElByCharIndex);
     const activateGame = answerCharEls.every(o => o.innerHTML === '&nbsp;' || o.style.color === 'black');
@@ -457,24 +501,20 @@ function initPreGameElements() {
     }
     window.setTimeout(() => {
       el.style.color = _charsBaseColor;
-    }, Math.max(((Math.random() * ANSWER_CLICK_TIMEOUT) | 0), 5));
+    }, Math.max(((Math.random() * ANSWER_CLICK_TIMEOUT) | 0), 2000));
   };
   const answer = 'Experiential radio.';
-  setChars(answer, 'answer', answerClickHandler);
+  setChars(answer, 'answer', 2000, answerClickHandler);
 
   // Init current audio track (relies on _initialQuestion)
-  if (Object.values(audioMeta).indexOf(question) >= 0) {
-    _audioModeKey = Object.keys(audioMeta)[Object.values(audioMeta).indexOf(question)];
+  if (Object.values(audioMeta).indexOf(_initialQuestion) >= 0) {
+    _audioModeKey = Object.keys(audioMeta)[Object.values(audioMeta).indexOf(_initialQuestion)];
   } else {
     _audioModeKey = '0';
   }
   const tunesEl = document.getElementById('tunes');
   let audioFile;
-  if (_audioModeKey === '0') {
-    audioFile = 'audio/' + _audioModeKey + '.wav';
-  } else {
-    audioFile = 'audio/' + _audioModeKey + '.mp3';
-  }
+  audioFile = 'audio/' + _audioModeKey + '.mp3';
   tunesEl.setAttribute('src', audioFile);
 
   // Init background image
@@ -483,7 +523,7 @@ function initPreGameElements() {
       return Promise.resolve('https://deaconmeek.github.io/experientialradio/img/' + _audioModeKey + '.jpg');
     } else {
       return new Promise((resolve) => {
-        generateImageUrl(question, (imageUrl) => {
+        generateImageUrl(_initialQuestion, (imageUrl) => {
           // console.log(imageUrl);
           resolve(imageUrl || 'https://deaconmeek.github.io/experientialradio/img/waaat.jpg');
         });
@@ -493,8 +533,8 @@ function initPreGameElements() {
     buildImageData(imageUrl).then((imageData) => {
       if (!_audioModeKey) {
         filterImageData(imageData, 'blur', {amount: 1});
+        filterImageData(imageData);
       }
-      filterImageData(imageData);
       const mainCanvasEl = document.getElementById('main-image');
       mainCanvasEl.getContext('2d').putImageData(imageData,0,0);
       const imageContainerEl = document.getElementById('bg');
