@@ -51,7 +51,7 @@ const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 15000;
 const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 
 function init() {
   const state = {
@@ -85,7 +85,7 @@ function initScriptLines() {
   fetchFromUrl('https://deaconmeek.github.io/experientialradio/script.js')
     .then((script) => {
       _scriptLines = script.split('\n');
-    }).catch((err) => {
+    }).catch(() => {
     _scriptLines = ['?????????????????????????'];
   });
 }
@@ -94,7 +94,7 @@ function initCssProperties() {
   fetchFromUrl('https://deaconmeek.github.io/experientialradio/valuesByCssProperty.json')
     .then((json) => {
       _cssValuesByCssProperty = JSON.parse(json);
-    }).catch((err) => {
+    }).catch(() => {
     _scriptLines = {};
   });
 }
@@ -284,10 +284,10 @@ function getRevealWordHandler(state, initGameOver) {
     const scoreDelta = (state.momentum * state.momentum) + 1;
     state.score = Math.max(state.score + scoreDelta, 0);
     const scoreString = getBinaryScore(state.score);
-    drawNewScore(scoreString, state.answerCharElByCharIndex, true);
+    const color = (state.momentum >= MOMENTUM_BONUS_THRESHOLD) ? getRandomColor() : CHARS_BASE_COLOR;
+    drawNewScore(scoreString, state.answerCharElByCharIndex, color, true);
 
-    const changeColor = state.momentum >= MOMENTUM_BONUS_THRESHOLD;
-    drawNewRandomLetter(state.questionDeltaByCharIndex, state.questionCharElByCharIndex, state.nextAudioTitlePadded, state.momentum, changeColor)
+    drawNewRandomLetter(state.questionDeltaByCharIndex, state.questionCharElByCharIndex, state.nextAudioTitlePadded, state.momentum)
       .then(() => {
         if (isGameOver(state.questionDeltaByCharIndex) && state.level !== LEVEL.gameover) {
           initGameOver();
@@ -300,7 +300,7 @@ function updateMomentum(momentum, delta) {
   return Math.max(momentum + delta, 0);
 }
 
-function drawNewScore(string, charElByCharIndex, animate) {
+function drawNewScore(string, charElByCharIndex, color, animate) {
   // Assumes string is of same length as state.answerCharElByCharIndex
   const charEls = Object.values(charElByCharIndex);
   for (const [i, char] of [...string].entries()) {
@@ -308,15 +308,16 @@ function drawNewScore(string, charElByCharIndex, animate) {
     if (spanEl.innerHTML === char) {
       continue;
     }
-    drawNewLetter(spanEl, char, CHARS_BASE_COLOR, animate);
+    drawNewLetter(spanEl, char, color, animate);
   }
 }
 
-function drawNewRandomLetter(deltaByCharIndex, charElByCharIndex, newWord, momentum, changeColor) {
+function drawNewRandomLetter(deltaByCharIndex, charElByCharIndex, newWord, momentum) {
   return new Promise((resolve) => {
     let newChar;
     let charIndex;
     let finalCharDelta;
+    let color = CHARS_BASE_COLOR;
     while (!Number.isInteger(charIndex)) {
       const nextCharIndex = getRandomInt(Object.keys(deltaByCharIndex).length);
       finalCharDelta = _finalCharDeltaLookup[nextCharIndex];
@@ -328,14 +329,14 @@ function drawNewRandomLetter(deltaByCharIndex, charElByCharIndex, newWord, momen
     }
     if (deltaByCharIndex[charIndex] === (finalCharDelta - 1)) {
       newChar = newWord[charIndex];
+      color = getRandomColor();
       drawGlitch();
     } else {
       newChar = getRandomChar(momentum);
     }
     deltaByCharIndex[charIndex] += 1;
     const spanEl = charElByCharIndex[charIndex];
-    const newColor = changeColor ? getRandomColor() : CHARS_BASE_COLOR;
-    drawNewLetter(spanEl, newChar, newColor, true, resolve);
+    drawNewLetter(spanEl, newChar, color, true, resolve);
   });
 }
 
@@ -753,7 +754,7 @@ function getInitGameOver(state) {
     altBackground(Number.MAX_SAFE_INTEGER);
     state.score = finalizeScore(state.score, state.cheat, state.gameTimeStart);
     const scoreString = getBinaryScore(state.score);
-    drawNewScore(scoreString, state.answerCharElByCharIndex, true);
+    drawNewScore(scoreString, state.answerCharElByCharIndex, CHARS_BASE_COLOR, true);
   };
 }
 
@@ -821,13 +822,13 @@ function addKonamiCodeListener(callback) {
   });
 }
 
-function inIframe() {
-  try {
-    return window.self !== window.top;
-  } catch (e) {
-    return true;
-  }
-}
+// function inIframe() {
+//   try {
+//     return window.self !== window.top;
+//   } catch (e) {
+//     return true;
+//   }
+// }
 
 // Loader
 if (document.readyState !== 'loading') {
