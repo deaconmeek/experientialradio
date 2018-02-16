@@ -2,7 +2,8 @@
 'use strict';
 
 let _scriptLines;
-const _htmlEls = ['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'b', 'base', 'basefont', 'bdi', 'bdo', 'big', 'blink', 'blockquote', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'command', 'data', 'datalist', 'dd', 'details', 'dfn', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'header', 'hgroup', 'hr', 'i', 'iframe', 'input', 'isindex', 'kbd', 'keygen', 'label', 'legend', 'li', 'listing', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meta', 'meter', 'multicol', 'nav', 'nextid', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'picture', 'plaintext', 'pre', 'progress', 'q', 'rp', 's', 'samp', 'section', 'select', 'shadow', 'slot', 'small', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'xmp'];
+let _cssValuesByCssProperty;
+const _htmlEls = ['a', 'basefont', 'big', 'blink', 'blockquote', 'b', 'button', 'center', 'code', 'em', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'iframe', 'kbd', 'li', 'marquee', 'ol', 'q', 'samp', 'small', 'strikeout', 'strong', 'sub', 'sup', 'textarea', 'tt', 'u', 'ul'];
 const _imgFilters = ['circlesmear', 'diffusion', 'dither', 'noise', 'pixelate', 'posterize']; // 'invert', 'sepia', 'solarize'
 const _finalCharDeltaLookup = [10, 22, 13, 19, 16, 21, 23, 14, 24, 20, 24, 15, 11, 17, 20, 21, 23, 12, 16, 22, 21, 11, 14, 19, 16, 18, 22, 21, 24, 11, 15, 18, 23, 13, 18, 19, 19, 23, 16, 15, 16, 13, 10, 12, 22, 22, 17, 23, 23, 14];
 // const _finalCharDeltaLookup = new Array(40).fill(1);
@@ -60,6 +61,7 @@ function init() {
   };
 
   initScriptLines();
+  initCssProperties();
 
   state.initialQuestion = generateQuestion(true);
   state.currentAudioKey = calculateCurrentAudioKey(state.initialQuestion);
@@ -75,10 +77,8 @@ function init() {
   state.answerCharElByCharIndex = initWhackMoleLevel(whackMoleHandler);
 
   drawBackgroundImage(state.initialQuestion, state.currentAudioKey);
-  addKonamiCodeListener(() => {
-    state.cheat = true;
-    initRevealWordLevel();
-  });
+
+  addKonamiCodeListener(() => autoStart(state, initRevealWordLevel));
 }
 
 function initScriptLines() {
@@ -86,8 +86,22 @@ function initScriptLines() {
     .then((script) => {
       _scriptLines = script.split('\n');
     }).catch((err) => {
-      _scriptLines = ['?????????????????????????'];
-    });
+    _scriptLines = ['?????????????????????????'];
+  });
+}
+
+function initCssProperties() {
+  fetchFromUrl('https://deaconmeek.github.io/experientialradio/valuesByCssProperty.json')
+    .then((json) => {
+      _cssValuesByCssProperty = JSON.parse(json);
+    }).catch((err) => {
+    _scriptLines = {};
+  });
+}
+
+function autoStart(state, initRevealWordLevel) {
+  state.cheat = true;
+  initRevealWordLevel();
 }
 
 function generateQuestion(allowFromQueryParams) {
@@ -305,18 +319,20 @@ function mungeHtml() {
   let codeString = codeContainerEl.innerText !== '' ? codeContainerEl.innerText : 'v' + VERSION;
   codeContainerEl.innerText = codeString + '\n' + getScriptSnippet(_scriptLines);
 
-  document.getElementsByTagName('body')[0].append(getRandomHtmlEl());
+  document.getElementsByTagName('body')[0].append(getRandomHtmlEls());
 }
 
 function getScriptSnippet(_scriptLines) {
   let snippet;
-  while (!snippet || snippet.length < 5) {
+  let i = 0;
+  while (_scriptLines.length && i < 10 && (!snippet || snippet.length < 1)) {
     snippet = _scriptLines[getRandomInt(_scriptLines.length)].trim();
+    i += 1;
   }
   return snippet;
 }
 
-function getRandomHtmlEl() {
+function getRandomHtmlEls(forceType) {
   const allEls = document.getElementsByTagName('*');
   let randomEl;
   while (!randomEl || !randomEl.id) {
@@ -324,19 +340,45 @@ function getRandomHtmlEl() {
   }
   const clonedEl = deepCloneEl(randomEl);
 
-  const color = getRandomColor();
+  const color1 = getRandomColor();
   const screenWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
   const screenHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-  const x = getRandomInt(screenWidth - 100);
-  const y = getRandomInt(screenHeight - 100);
-  const w = getRandomInt(screenWidth - x) + 100;
-  const h = getRandomInt(screenHeight - y) + 100;
-  const size = getRandomInt(100);
+  const paddingTop = parseInt(window.getComputedStyle(document.getElementById('question-container')).height);
+  const minHeight = 100;
+  const minWidth = 100;
+  const x = getRandomInt(screenWidth - minWidth);
+  const y = getRandomInt(screenHeight - (2 * paddingTop) - minHeight);
+  const w = getRandomInt(screenWidth - x + minWidth);
+  const h = getRandomInt(screenHeight - y + minHeight);
 
-  let randomElType = _htmlEls[getRandomInt(_htmlEls.length)];
-  let el = document.createElement(randomElType);
+  let el = getRandomHtmlEl(forceType)
+  let subEl = getRandomHtmlEl();
+  subEl.appendChild(clonedEl);
   el.appendChild(clonedEl);
-  el.setAttribute('style', 'z-index:1;font-size:' + size + 'px;color:' + color + ';position:absolute;top:' + y + ';left:' + x + ';width:' + w + ';height:' + h + ';');
+  el.style['z-index'] = 1;
+  el.style['position'] = 'absolute';
+  el.style['top'] = y;
+  el.style['left'] = x;
+  el.style['width'] = w;
+  el.style['height'] = h;
+  el.style['color'] = color1;
+  el.style['background-color'] = 'rgba(0,0,0,0)';
+  return el;
+}
+
+function getRandomHtmlEl(forceType) {
+  let randomElType = forceType ? forceType : _htmlEls[getRandomInt(_htmlEls.length)];
+  const el = document.createElement(randomElType);
+  const cssPropertyByName = getRandomCssProperties(20);
+  for (const propertyName of Object.keys(cssPropertyByName)) {
+    el.style[propertyName] = cssPropertyByName[propertyName];
+  }
+  if (el.tagName === 'IFRAME') {
+    el.setAttribute('src', 'index.html');
+  } else if (el.tabName === 'IMG') {
+    const randomKey = Object.keys(_audioTitleByKey)[getRandomInt(Object.keys(_audioTitleByKey).length)];
+    el.setAttribute('src', 'https://deaconmeek.github.io/experientialradio/img/' + randomKey + '.jpg');
+  }
   return el;
 }
 
@@ -350,8 +392,6 @@ function deepCloneEl(el) {
     } else if (childEl.tagName === 'AUDIO' && elAttributes.src) {
       childEl.setAttribute('src', elAttributes.src);
       childEl.setAttribute('autoplay', true);
-    } else if (childEl.tagName === 'IFRAME') {
-      childEl.setAttribute('src', 'index.html');
     }
     childEl = (childEl.hasChildNodes() && childEl.firstChild.tagName) ? childEl.firstChild : null;
   }
@@ -368,12 +408,53 @@ function cloneEl(el, elAttributes) {
 
   const clonedEl = el.cloneNode();
   clonedEl.innerHTML = el.innerHTML ? el.innerHTML.replace(/id="[^"]+"/g, '') : ''; //.replace(/class="[^"]+"/g, '') : '';
+  // clonedEl.innerText = getScriptSnippet((clonedEl.innerText || '').split('\n'));
   clonedEl.id = '';
-  clonedEl.setAttribute('style', '');
+  clonedEl.className = '';
   if (clonedEl.hasChildNodes() && clonedEl.firstChild.tagName) {
     clonedEl.appendChild(cloneEl(clonedEl.firstChild, elAttributes));
   }
   return clonedEl;
+}
+
+function getRandomCssProperties(count) {
+  const valueByProperty = {};
+  for (let i = 0; i < count; i += 1) {
+    const randomKeyIndex = getRandomInt(Object.keys(_cssValuesByCssProperty).length);
+    const cssPropertyName = Object.keys(_cssValuesByCssProperty)[randomKeyIndex];
+    valueByProperty[cssPropertyName] = getRandomCssPropertyValue(cssPropertyName);
+  }
+  return valueByProperty;
+}
+
+function getRandomCssPropertyValue(cssPropertyName) {
+  const values = _cssValuesByCssProperty[cssPropertyName];
+  const randomValueIndex = getRandomInt(values.length);
+  let value = values[randomValueIndex];
+  if (value.indexOf('<') === 0) {
+    const [type, min, max] = getCssTypeMinMaxFromValue(value);
+    if (type === 'length') {
+      value = Array(min + (max - min)).fill().map(() => getRandomInt(30) + 'px').join(' ');
+    } else if (type === 'integer') {
+      value = Array(min + (max - min)).fill().map(() => getRandomInt(30)).join(' ');
+    } else if (type === 'color') {
+      value = Array(min + (max - min)).fill().map(() => getRandomColor(true)).join(' ');
+    } else if (_cssValuesByCssProperty[type]) {
+      value = getRandomCssPropertyValue(type, true);
+    }
+  } else if (['initial', 'unset', 'inherit'].includes(value)) {
+    value = '';
+  }
+  return value;
+}
+
+function getCssTypeMinMaxFromValue(value) {
+  const type = value.substr(1, (value.indexOf('>') - 1));
+  let rangeStr = value.indexOf('{') > -1 ? value.substr(value.indexOf('{')) : '';
+  rangeStr = rangeStr.substr(1, (rangeStr.length - 2));
+  const min = rangeStr ? rangeStr.split(',')[0] : 1;
+  const max = rangeStr ? rangeStr.split(',')[1] : 1;
+  return [type, min, max];
 }
 
 function altBackground(flashes) {
@@ -513,8 +594,18 @@ function drawFlashingBackground(flashes) {
   }, 100);
 }
 
-function getRandomColor() {
-  return '#'+((Math.random()*0x777777) + 0x666666).toString(16).slice(-6);
+function getRandomColor(allowTransparency) {
+  let rgba;
+  const hex = '#'+((Math.random()*0x777777) + 0x666666).toString(16).slice(-6);
+  if (allowTransparency) {
+    const result = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/.exec(hex);
+    if (!result) {
+      return hex;
+    }
+    const rgbaInts = [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16), Math.random()];
+    rgba = 'rgba(' + rgbaInts.join(',') + ')';
+  }
+  return rgba || hex;
 }
 
 function playGlitch(duration) {
@@ -620,20 +711,19 @@ function getInitGameOver(state) {
       spanEl.style.cursor = 'pointer';
       spanEl.addEventListener('click', questionClickHandler);
     }
-    const codeEl = document.getElementById('code-container');
-    codeEl.style.cursor = 'pointer';
-    codeEl.addEventListener('click', () => {
-      codeEl.style.color = codeEl.style.color === 'black' ? 'white' : 'black';
-    });
+    cleanUpCodeContainer();
+    addIframe();
     altBackground(Number.MAX_SAFE_INTEGER);
     state.score = finalizeScore(state.score, state.cheat, state.gameTimeStart);
+    const scoreString = getBinaryScore(state.score);
+    drawNewScore(scoreString, state.answerCharElByCharIndex, true);
   };
 }
 
 function finalizeScore(score, cheat, gameTimeStart) {
   const totalTime = ((new Date() - gameTimeStart) / 1000)|0;
-  const timeBonus = cheat ? 0 : 2000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
-  score += timeBonus;
+  const timeBonus = cheat ? 77.77 : 2000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
+  score += parseInt(timeBonus);
 
   if (score > getHighScore()) {
     document.cookie = HIGH_SCORE_COOKIE + '=' + score + '; path=/';
@@ -646,6 +736,23 @@ function finalizeScore(score, cheat, gameTimeStart) {
     '\nALL TIME HIGH: ' + getHighScore();
 
   return score;
+}
+
+function cleanUpCodeContainer() {
+  const codeEl = document.getElementById('code-container');
+  codeEl.style.cursor = 'pointer';
+  codeEl.addEventListener('click', () => {
+    codeEl.style.color = codeEl.style.color === 'black' ? 'white' : 'black';
+  });
+  codeEl.style.width = 'unset';
+  codeEl.style.height = 'unset';
+}
+
+function addIframe() {
+  const iframeEls = document.getElementsByTagName('iframe');
+  if (iframeEls.length === 0) {
+    document.getElementsByTagName('body')[0].append(getRandomHtmlEls('iframe'));
+  }
 }
 
 function getHighScore() {
@@ -675,6 +782,14 @@ function addKonamiCodeListener(callback) {
     }
     keyInput = String(e.keyCode);
   });
+}
+
+function inIframe() {
+  try {
+    return window.self !== window.top;
+  } catch (e) {
+    return true;
+  }
 }
 
 // Loader

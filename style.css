@@ -65,7 +65,8 @@ body {
   left: 0;
   text-align: left;
   margin-top: 0;
-  font-size: 2vh;
+  font-size: 1.3vh;
+  font-family: unset;
   z-index:10;
   color: black;
 }
