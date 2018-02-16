@@ -51,7 +51,7 @@ const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 15000;
 const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
-const VERSION = '1.2.2';
+const VERSION = '1.3.0';
 
 function init() {
   const state = {
