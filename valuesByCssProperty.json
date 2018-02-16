@@ -34,7 +34,7 @@
     "unset"
   ],
   "animation-delay": [
-    "%time%",
+    "<time>",
     "initial",
     "inherit"
   ],
@@ -47,7 +47,7 @@
     "inherit"
   ],
   "animation-duration": [
-    "%time%",
+    "<time>",
     "initial",
     "inherit"
   ],
@@ -60,13 +60,13 @@
     "inherit"
   ],
   "animation-iteration-count": [
-    "%integer%",
+    "<integer>",
     "infinite",
     "initial",
     "inherit"
   ],
   "animation-name": [
-    "%keyframename%",
+    "<keyframename>",
     "none",
     "initial",
     "inherit"
@@ -98,14 +98,14 @@
     "inherit"
   ],
   "background": [
-    "%background-attachment%",
-    "%background-color%",
-    "%background-image%",
-    "%background-position%",
-    "%background-size%",
-    "%background-repeat%",
-    "%background-origin%",
-    "%background-clip%",
+    "<background-attachment>",
+    "<background-color>",
+    "<background-image>",
+    "<background-position>",
+    "<background-size>",
+    "<background-repeat>",
+    "<background-origin>",
+    "<background-clip>",
     "initial",
     "inherit"
   ],
@@ -136,13 +136,13 @@
     "inherit"
   ],
   "background-color": [
-    "%color%",
+    "<color>",
     "transparent",
     "initial",
     "inherit"
   ],
   "background-image": [
-    "%url%",
+    "<url>",
     "none",
     "initial",
     "inherit"
@@ -155,7 +155,7 @@
     "inherit"
   ],
   "background-position": [
-    "%length%"
+    "<length>"
   ],
   "background-repeat": [
     "repeat",
@@ -167,39 +167,39 @@
   ],
   "background-size": [
     "auto",
-    "%length%",
+    "<length>",
     "cover",
     "contain",
     "initial",
     "inherit"
   ],
   "border": [
-    "%length%",
-    "%border-style%",
-    "%color%",
+    "<length>",
+    "<border-style>",
+    "<color>",
     "initial",
     "inherit"
   ],
   "border-bottom": [
-    "%length%",
-    "%border-style%",
-    "%color%",
+    "<length>",
+    "<border-style>",
+    "<color>",
     "initial",
     "inherit"
   ],
   "border-bottom-color": [
-    "%color%",
+    "<color>",
     "transparent",
     "initial",
     "inherit"
   ],
   "border-bottom-left-radius": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "border-bottom-right-radius": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -221,7 +221,7 @@
     "medium",
     "thin",
     "thick",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -232,23 +232,23 @@
     "inherit"
   ],
   "border-color": [
-    "%color%",
+    "<color>",
     "transparent",
     "initial",
     "inherit"
   ],
   "border-image": [
-    "%border-image-source%",
-    "%border-image-slice%",
-    "%border-image-width%",
-    "%border-image-outset%",
-    "%border-image-repeat%",
+    "<border-image-source>",
+    "<border-image-slice>",
+    "<border-image-width>",
+    "<border-image-outset>",
+    "<border-image-repeat>",
     "initial",
     "inherit"
   ],
   "border-image-outset": [
-    "%length%",
-    "%integer%",
+    "<length>",
+    "<integer>",
     "initial",
     "inherit"
   ],
@@ -260,32 +260,32 @@
     "inherit"
   ],
   "border-image-slice": [
-    "%integer%",
+    "<integer>",
     "fill",
     "initial",
     "inherit"
   ],
   "border-image-source": [
     "none",
-    "%url%",
+    "<url>",
     "initial",
     "inherit"
   ],
   "border-image-width": [
-    "%integer%",
+    "<integer>",
     "auto",
     "initial",
     "inherit"
   ],
   "border-left": [
-    "%length%",
-    "%border-style%",
-    "%color%",
+    "<length>",
+    "<border-style>",
+    "<color>",
     "initial",
     "inherit"
   ],
   "border-left-color": [
-    "%color%",
+    "<color>",
     "transparent",
     "initial",
     "inherit"
@@ -308,24 +308,24 @@
     "medium",
     "thin",
     "thick",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "border-radius": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "border-right": [
-    "%length%",
-    "%border-style%",
-    "%color%",
+    "<length>",
+    "<border-style>",
+    "<color>",
     "initial",
     "inherit"
   ],
   "border-right-color": [
-    "%color%",
+    "<color>",
     "transparent",
     "initial",
     "inherit"
@@ -348,12 +348,12 @@
     "medium",
     "thin",
     "thick",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "border-spacing": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -372,25 +372,25 @@
     "inherit"
   ],
   "border-top": [
-    "%length%",
-    "%border-style%",
-    "%color%",
+    "<length>",
+    "<border-style>",
+    "<color>",
     "initial",
     "inherit"
   ],
   "border-top-color": [
-    "%color%",
+    "<color>",
     "transparent",
     "initial",
     "inherit"
   ],
   "border-top-left-radius": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "border-top-right-radius": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -412,7 +412,7 @@
     "medium",
     "thin",
     "thick",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -420,13 +420,13 @@
     "medium",
     "thin",
     "thick",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "bottom": [
     "auto",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -439,11 +439,8 @@
   ],
   "box-shadow": [
     "none",
-    "%h-offset%",
-    "%v-offset%",
-    "%blur%",
-    "%spread%",
-    "%color%",
+    "<length>{2,4}",
+    "<color>",
     "inset",
     "initial",
     "inherit"
@@ -474,17 +471,17 @@
   ],
   "clip": [
     "auto",
-    "%shape%",
+    "<shape>",
     "initial",
     "inherit"
   ],
   "color": [
-    "%color%",
+    "<color>",
     "initial",
     "inherit"
   ],
   "column-count": [
-    "%integer%",
+    "<integer>",
     "auto",
     "initial",
     "inherit"
@@ -496,18 +493,18 @@
     "inherit"
   ],
   "column-gap": [
-    "%length%",
+    "<length>",
     "normal",
     "initial",
     "inherit"
   ],
   "column-rule": [
-    "%color%",
+    "<color>",
     "initial",
     "inherit"
   ],
   "column-rule-color": [
-    "%color%",
+    "<color>",
     "initial",
     "inherit"
   ],
@@ -529,7 +526,7 @@
     "medium",
     "thin",
     "thick",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -541,14 +538,14 @@
   ],
   "column-width": [
     "auto",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "columns": [
     "auto",
-    "%column-width%",
-    "%column-count%",
+    "<column-width>",
+    "<column-count>",
     "initial",
     "inherit"
   ],
@@ -557,29 +554,29 @@
     "none",
     "counter",
     "attr",
-    "%string%",
+    "<string>",
     "open-quote",
     "close-quote",
     "no-open-quote",
     "no-close-quote",
-    "%url%",
+    "<url>",
     "initial",
     "inherit"
   ],
   "counter-increment": [
     "none",
-    "%id%",
+    "<id>",
     "initial",
     "inherit"
   ],
   "counter-reset": [
     "none",
-    "%name number%",
+    "<name number>",
     "initial",
     "inherit"
   ],
   "cursor": [
-    "%length%"
+    "<length>"
   ],
   "direction": [
     "ltr",
@@ -588,7 +585,7 @@
     "inherit"
   ],
   "display": [
-    "%length%"
+    "<length>"
   ],
   "empty-cells": [
     "show",
@@ -597,15 +594,15 @@
     "inherit"
   ],
   "flex": [
-    "%flex-grow%",
-    "%flex-shrink%",
-    "%flex-basis%",
+    "<flex-grow>",
+    "<flex-shrink>",
+    "<flex-basis>",
     "auto",
     "initial",
     "inherit"
   ],
   "flex-basis": [
-    "%integer%",
+    "<integer>",
     "auto",
     "initial",
     "inherit"
@@ -619,18 +616,18 @@
     "inherit"
   ],
   "flex-flow": [
-    "%flex-direction%",
-    "%flex-wrap%",
+    "<flex-direction>",
+    "<flex-wrap>",
     "initial",
     "inherit"
   ],
   "flex-grow": [
-    "%integer%",
+    "<integer>",
     "initial",
     "inherit"
   ],
   "flex-shrink": [
-    "%integer%",
+    "<integer>",
     "initial",
     "inherit"
   ],
@@ -649,11 +646,11 @@
     "inherit"
   ],
   "font": [
-    "%font-style%",
-    "%font-variant%",
-    "%font-weight%",
-    "%length%",
-    "%font-family%",
+    "<font-style>",
+    "<font-variant>",
+    "<font-weight>",
+    "<length>",
+    "<font-family>",
     "caption",
     "icon",
     "menu",
@@ -664,8 +661,8 @@
     "inherit"
   ],
   "font-family": [
-    "%family-name%",
-    "%generic-family%",
+    "<family-name>",
+    "<generic-family>",
     "initial",
     "inherit"
   ],
@@ -675,7 +672,7 @@
     "none"
   ],
   "font-size-adjust": [
-    "%integer%",
+    "<integer>",
     "none",
     "initial",
     "inherit"
@@ -711,7 +708,7 @@
     "bold",
     "bolder",
     "lighter",
-    "%integer%",
+    "<integer>",
     "initial",
     "inherit"
   ],
@@ -719,35 +716,35 @@
     "auto",
     "max-content",
     "min-content",
-    "%length%"
+    "<length>"
   ],
   "grid-column-gap": [
-    "%length%"
+    "<length>"
   ],
   "grid-column-start": [
     "auto",
-    "%column-line%"
+    "<column-line>"
   ],
   "grid-gap": [
-    "%length length%"
+    "<length length>"
   ],
   "grid-row-gap": [
-    "%length%"
+    "<length>"
   ],
   "grid-row-start": [
     "auto",
-    "%row-line%"
+    "<row-line>"
   ],
   "grid-template-areas": [
     "none",
-    "%itemnames%"
+    "<itemnames>"
   ],
   "grid-template-columns": [
     "none",
     "auto",
     "max-content",
     "min-content",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -756,7 +753,7 @@
     "auto",
     "max-content",
     "min-content",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -771,7 +768,7 @@
   ],
   "height": [
     "auto",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -786,33 +783,33 @@
   ],
   "left": [
     "auto",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "letter-spacing": [
     "normal",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "line-height": [
     "normal",
-    "%integer%",
-    "%length%",
+    "<integer>",
+    "<length>",
     "initial",
     "inherit"
   ],
   "list-style": [
-    "%list-style-type%",
-    "%list-style-position%",
-    "%list-style-image%",
+    "<list-style-type>",
+    "<list-style-position>",
+    "<list-style-image>",
     "initial",
     "inherit"
   ],
   "list-style-image": [
     "none",
-    "%url%",
+    "<url>",
     "initial",
     "inherit"
   ],
@@ -823,51 +820,51 @@
     "inherit"
   ],
   "list-style-type": [
-    "%length%"
+    "<length>"
   ],
   "margin": [
-    "%length%",
+    "<length>",
     "auto",
     "initial",
     "inherit"
   ],
   "margin-bottom": [
-    "%length%",
+    "<length>",
     "auto",
     "initial",
     "inherit"
   ],
   "margin-right": [
-    "%length%",
+    "<length>",
     "auto",
     "initial",
     "inherit"
   ],
   "margin-top": [
-    "%length%",
+    "<length>",
     "auto",
     "initial",
     "inherit"
   ],
   "max-height": [
     "none",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "max-width": [
     "none",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "min-height": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "min-width": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -881,30 +878,30 @@
     "inherit"
   ],
   "opacity": [
-    "%integer%",
+    "<integer>",
     "initial",
     "inherit"
   ],
   "order": [
-    "%integer%",
+    "<integer>",
     "initial",
     "inherit"
   ],
   "outline": [
-    "%length%",
-    "%outline-style%",
-    "%color%",
+    "<length>",
+    "<outline-style>",
+    "<color>",
     "initial",
     "inherit"
   ],
   "outline-color": [
     "invert",
-    "%color%",
+    "<color>",
     "initial",
     "inherit"
   ],
   "outline-offset": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -926,7 +923,7 @@
     "medium",
     "thin",
     "thick",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -955,27 +952,27 @@
     "inherit"
   ],
   "padding": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "padding-bottom": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "padding-left": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "padding-right": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "padding-top": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -1004,12 +1001,12 @@
     "inherit"
   ],
   "perspective": [
-    "%length%",
+    "<length>",
     "none"
   ],
   "perspective-origin": [
-    "%x-axis%",
-    "%y-axis%",
+    "<x-axis>",
+    "<y-axis>",
     "initial",
     "inherit"
   ],
@@ -1024,7 +1021,7 @@
   ],
   "quotes": [
     "none",
-    "%string%",
+    "<string>",
     "initial",
     "inherit"
   ],
@@ -1038,13 +1035,13 @@
   ],
   "right": [
     "auto",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "tab-size": [
-    "%integer%",
-    "%length%",
+    "<integer>",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -1082,7 +1079,7 @@
     "inherit"
   ],
   "text-decoration-color": [
-    "%color%",
+    "<color>",
     "initial",
     "inherit"
   ],
@@ -1104,7 +1101,7 @@
     "inherit"
   ],
   "text-indent": [
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -1122,15 +1119,15 @@
   "text-overflow": [
     "clip",
     "ellipsis",
-    "%string%",
+    "<string>",
     "initial",
     "inherit"
   ],
   "text-shadow": [
-    "%length%",
-    "%length%",
-    "%length%",
-    "%color%",
+    "<length>{2,3}",
+    "<length>",
+    "<length>",
+    "<color>",
     "none",
     "initial",
     "inherit"
@@ -1145,20 +1142,20 @@
   ],
   "top": [
     "auto",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
   "transform": [
     "none",
-    "%transform-functions%",
+    "<transform-functions>",
     "initial",
     "inherit"
   ],
   "transform-origin": [
-    "%x-axis%",
-    "%y-axis%",
-    "%z-axis%",
+    "<x-axis>",
+    "<y-axis>",
+    "<z-axis>",
     "initial",
     "inherit"
   ],
@@ -1169,27 +1166,27 @@
     "inherit"
   ],
   "transition": [
-    "%property%",
-    "%duration%",
-    "%timing-function%",
-    "%delay%",
+    "<property>",
+    "<duration>",
+    "<timing-function>",
+    "<delay>",
     "initial",
     "inherit"
   ],
   "transition-delay": [
-    "%time%",
+    "<time>",
     "initial",
     "inherit"
   ],
   "transition-duration": [
-    "%time%",
+    "<time>",
     "initial",
     "inherit"
   ],
   "transition-property": [
     "none",
     "all",
-    "%property%",
+    "<property>",
     "initial",
     "inherit"
   ],
@@ -1222,7 +1219,7 @@
   ],
   "vertical-align": [
     "baseline",
-    "%length%",
+    "<length>",
     "sub",
     "super",
     "top",
@@ -1251,7 +1248,7 @@
   ],
   "width": [
     "auto",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -1264,7 +1261,7 @@
   ],
   "word-spacing": [
     "normal",
-    "%length%",
+    "<length>",
     "initial",
     "inherit"
   ],
@@ -1276,7 +1273,7 @@
   ],
   "z-index": [
     "auto",
-    "%integer%",
+    "<integer>",
     "initial",
     "inherit"
   ]
