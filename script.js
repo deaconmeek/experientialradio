@@ -1,16 +1,18 @@
 /* global document, window, XMLHttpRequest, JSManipulate, Promise */
 'use strict';
 
-const htmlEls = ['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'b', 'base', 'basefont', 'bdi', 'bdo', 'big', 'blink', 'blockquote', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'command', 'data', 'datalist', 'dd', 'details', 'dfn', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'header', 'hgroup', 'hr', 'i', 'iframe', 'input', 'isindex', 'kbd', 'keygen', 'label', 'legend', 'li', 'listing', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meta', 'meter', 'multicol', 'nav', 'nextid', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'picture', 'plaintext', 'pre', 'progress', 'q', 'rp', 's', 'samp', 'section', 'select', 'shadow', 'slot', 'small', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'xmp'];
-const imgFilters = ['circlesmear', 'diffusion', 'dither', 'noise', 'pixelate', 'posterize']; // 'invert', 'sepia', 'solarize'
-const finalCharDeltaLookup = [10, 22, 13, 19, 16, 21, 23, 14, 24, 20, 24, 15, 11, 17, 20, 21, 23, 12, 16, 22, 21, 11, 14, 19, 16, 18, 22, 21, 24, 11, 15, 18, 23, 13, 18, 19, 19, 23, 16, 15, 16, 13, 10, 12, 22, 22, 17, 23, 23, 14];
+let _scriptLines;
+const _htmlEls = ['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'b', 'base', 'basefont', 'bdi', 'bdo', 'big', 'blink', 'blockquote', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'command', 'data', 'datalist', 'dd', 'details', 'dfn', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'header', 'hgroup', 'hr', 'i', 'iframe', 'input', 'isindex', 'kbd', 'keygen', 'label', 'legend', 'li', 'listing', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meta', 'meter', 'multicol', 'nav', 'nextid', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'picture', 'plaintext', 'pre', 'progress', 'q', 'rp', 's', 'samp', 'section', 'select', 'shadow', 'slot', 'small', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'xmp'];
+const _imgFilters = ['circlesmear', 'diffusion', 'dither', 'noise', 'pixelate', 'posterize']; // 'invert', 'sepia', 'solarize'
+const _finalCharDeltaLookup = [10, 22, 13, 19, 16, 21, 23, 14, 24, 20, 24, 15, 11, 17, 20, 21, 23, 12, 16, 22, 21, 11, 14, 19, 16, 18, 22, 21, 24, 11, 15, 18, 23, 13, 18, 19, 19, 23, 16, 15, 16, 13, 10, 12, 22, 22, 17, 23, 23, 14];
+// const _finalCharDeltaLookup = new Array(40).fill(1);
 
-const phrases = [
+const _phrases = [
   'Holy fuck', 'Conscientious objector', 'Unreasonable behaviour', 'Magnificent void', 'Reasonable doubt', 'Sound advice',
   'Questionable content', 'Conventional wisdom', 'Political agenda', 'Unusual predicament', 'Unique situation', 'Naughty nature',
   'Beautiful losers', 'Suspicious activity', 'Complete ass', 'Heavenly creatures', 'Manufacturing consent', 'Vengeful god',
 ];
-const unicodeBrackets = {
+const _unicodeBrackets = {
   0: ['0020', '60'],
   1: ['0020', '2AD'],
   2: ['0020', 'FFD'],
@@ -23,7 +25,7 @@ const unicodeBrackets = {
   9: ['FB00', '5FF'],
 };
 
-const audioMeta = {
+const _audioTitleByKey = {
   1: 'Amen breakdown',
   2: 'Descent',
   3: 'In the mist',
@@ -40,46 +42,298 @@ const LEVEL = {
   'prestart': 0,
   'whackmole': 1,
   'revealphrase': 2,
-  'pregameover': 3,
-  'gameover': 4,
+  'gameover': 3,
 };
-
+const CHARS_BASE_COLOR = 'aliceblue';
 const DECELLERATION_INTERVAL = 1500;
 const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 20000;
 const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
-const VERSION = '1.0.5';
+const VERSION = '1.2.2';
 
+function init() {
+  const state = {
+    momentum: 0,
+    score: 0,
+    level: 0,
+  };
 
-const state = {
-  momentum: 0,
-  score: 0,
-  level: 0,
-};
+  initScriptLines();
 
-function getRandomColor() {
-  return '#'+((Math.random()*0x777777) + 0x666666).toString(16).slice(-6);
+  state.initialQuestion = generateQuestion(true);
+  state.currentAudioKey = calculateCurrentAudioKey(state.initialQuestion);
+  state.nextAudioKey = generateNextAudioKey(state.initialQuestion);
+
+  state.questionCharElByCharIndex = drawInitialQuestion(state.initialQuestion);
+
+  const initGameOver = getInitGameOver(state);
+  const revealWordHandler = getRevealWordHandler(state, initGameOver);
+  const initRevealWordLevel = getInitRevealWordLevel(state, revealWordHandler);
+  const whackMoleHandler = getWhackMoleHandler(state, initRevealWordLevel);
+
+  state.answerCharElByCharIndex = initWhackMoleLevel(whackMoleHandler);
+
+  drawBackgroundImage(state.initialQuestion, state.currentAudioKey);
+  addKonamiCodeListener(() => {
+    state.cheat = true;
+    initRevealWordLevel();
+  });
+}
+
+function initScriptLines() {
+  fetchFromUrl('https://deaconmeek.github.io/experientialradio/script.js')
+    .then((script) => {
+      _scriptLines = script.split('\n');
+    }).catch((err) => {
+      _scriptLines = ['?????????????????????????'];
+    });
+}
+
+function generateQuestion(allowFromQueryParams) {
+  let queryQuestion;
+  if (document.location.search) {
+    const params = document.location.search.substr(1).split('&');
+    for (const param of params) {
+      if (param.split('=')[0] === 'q') {
+        queryQuestion = decodeURIComponent(param.split('=')[1]);
+        break;
+      }
+    }
+  }
+  if (allowFromQueryParams && queryQuestion) {
+    return queryQuestion;
+  }
+  const queryQuestionComponents = queryQuestion ? queryQuestion.split(' ') : [null];
+  const lastAdjective = queryQuestionComponents[0];
+  const lastNoun = queryQuestionComponents[queryQuestionComponents.length - 1];
+
+  let adjective;
+  let noun;
+  while (!adjective || adjective === lastAdjective) {
+    adjective = _phrases[getRandomInt(_phrases.length)].split(' ')[0];
+  }
+  while (!noun || noun === lastNoun) {
+    noun = _phrases[getRandomInt(_phrases.length)].split(' ')[1];
+  }
+  return `${adjective} ${noun}`;
+}
+
+function calculateCurrentAudioKey(currentQuestion) {
+  if (Object.values(_audioTitleByKey).indexOf(currentQuestion) >= 0) {
+    return Object.keys(_audioTitleByKey)[Object.values(_audioTitleByKey).indexOf(currentQuestion)];
+  } else {
+    return '0';
+  }
+}
+
+function generateNextAudioKey(currentQuestion) {
+  let audioTitle;
+  let audioKey;
+  while (!audioTitle || audioTitle === currentQuestion) {
+    audioKey = getRandomInt(Object.keys(_audioTitleByKey).length) + 1;
+    audioTitle = _audioTitleByKey[audioKey];
+  }
+  return audioKey;
+}
+
+function drawInitialQuestion(question) {
+  const nextQuestion = encodeURIComponent(generateQuestion());
+  const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + nextQuestion;
+  const questionClickHandler = () => document.location.replace(nextHref);
+  return drawChars(question + '?', 'question', 1000, questionClickHandler);
+}
+
+function initWhackMoleLevel(whackMoleHandler) {
+  const answer = 'Experiential radio.';
+  return drawChars(answer, 'answer', 2000, whackMoleHandler);
+}
+
+function drawChars(string, type, displayDelay, clickHandler) {
+  const charElByCharIndex = {};
+  let containerEl;
+  let className;
+  if (type === 'question') {
+    containerEl = document.getElementById('question-subcontainer');
+  } else if (type === 'answer') {
+    containerEl = document.getElementById('answer-subcontainer');
+  } else if (type === 'score') {
+    containerEl = document.getElementById('answer-subcontainer');
+    className = 'preformatted';
+  }
+
+  containerEl.innerHTML = '';
+  for (const [i, char] of [...string].entries()) {
+    const spanEl = document.createElement('span');
+    spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
+    spanEl.classList.add('chars');
+    if (className) {
+      spanEl.classList.add(className);
+    }
+    if (clickHandler) {
+      spanEl.style.cursor = 'pointer';
+      spanEl.addEventListener('click', clickHandler);
+    }
+    containerEl.appendChild(spanEl);
+    charElByCharIndex[i] = spanEl;
+  }
+  window.setTimeout(() => {
+    for (const i of Object.keys(charElByCharIndex)) {
+      charElByCharIndex[i].style.opacity = 1;
+    }
+  }, displayDelay);
+
+  return charElByCharIndex;
+}
+
+function getWhackMoleHandler(state, initRevealWordLevel) {
+  const whackMoleHandler = function (e) {
+    const el = e.target;
+    if (el.style.color === 'black') {
+      return;
+    }
+    if (!state.gameTimeStart) {
+      state.gameTimeStart = new Date();
+      state.level = LEVEL.whackmole;
+    }
+    playBeep();
+    el.style.color = 'black';
+    const answerCharEls = Object.values(state.answerCharElByCharIndex);
+    const activateGame = answerCharEls.every(o => o.innerHTML === '&nbsp;' || o.style.color === 'black');
+    if (activateGame) {
+      for (const spanEl of answerCharEls) {
+        spanEl.removeEventListener('click', whackMoleHandler);
+      }
+      initRevealWordLevel();
+    }
+    window.setTimeout(() => {
+      el.style.color = CHARS_BASE_COLOR;
+    }, Math.max(getRandomInt(ANSWER_CLICK_TIMEOUT), 2000));
+  };
+  return whackMoleHandler;
+}
+
+function playBeep() {
+  const beepEl = document.getElementById('beep');
+  beepEl.play();
+}
+
+function getRevealWordHandler(state, initGameOver) {
+  return function() {
+    if (state.level !== LEVEL.revealphrase) {
+      return;
+    }
+
+    state.momentum = updateMomentum(state.momentum, 1);
+    window.setTimeout(() => {
+      state.momentum = updateMomentum(state.momentum, -1);
+      // console.log(state.momentum);
+    }, DECELLERATION_INTERVAL);
+
+    const scoreDelta = (state.momentum * state.momentum) + 1;
+    state.score = Math.max(state.score + scoreDelta, 0);
+    const scoreString = getBinaryScore(state.score);
+    drawNewScore(scoreString, state.answerCharElByCharIndex, true);
+
+    const changeColor = state.momentum >= MOMENTUM_BONUS_THRESHOLD;
+    drawNewRandomLetter(state.questionDeltaByCharIndex, state.questionCharElByCharIndex, state.nextAudioTitlePadded, state.momentum, changeColor)
+      .then(() => {
+        if (isGameOver(state.questionDeltaByCharIndex) && state.level !== LEVEL.gameover) {
+          initGameOver();
+        }
+      });
+  };
+}
+
+function updateMomentum(momentum, delta) {
+  return Math.max(momentum + delta, 0);
+}
+
+function drawNewScore(string, charElByCharIndex, animate) {
+  // Assumes string is of same length as state.answerCharElByCharIndex
+  const charEls = Object.values(charElByCharIndex);
+  for (const [i, char] of [...string].entries()) {
+    const spanEl = charEls[i];
+    if (spanEl.innerHTML === char) {
+      continue;
+    }
+    drawNewLetter(spanEl, char, CHARS_BASE_COLOR, animate);
+  }
+}
+
+function drawNewRandomLetter(deltaByCharIndex, charElByCharIndex, newWord, momentum, changeColor) {
+  return new Promise((resolve) => {
+    let newChar;
+    let charIndex;
+    let finalCharDelta;
+    while (!Number.isInteger(charIndex)) {
+      const nextCharIndex = getRandomInt(Object.keys(deltaByCharIndex).length);
+      finalCharDelta = _finalCharDeltaLookup[nextCharIndex];
+      if (deltaByCharIndex[nextCharIndex] < finalCharDelta) {
+        charIndex = nextCharIndex;
+      } else if (isGameOver(deltaByCharIndex)) {
+        return resolve();
+      }
+    }
+    if (deltaByCharIndex[charIndex] === (finalCharDelta - 1)) {
+      newChar = newWord[charIndex];
+      drawGlitch();
+    } else {
+      newChar = getRandomChar(momentum);
+    }
+    deltaByCharIndex[charIndex] += 1;
+    const spanEl = charElByCharIndex[charIndex];
+    const newColor = changeColor ? getRandomColor() : CHARS_BASE_COLOR;
+    drawNewLetter(spanEl, newChar, newColor, true, resolve);
+  });
+}
+
+function isGameOver(deltaByCharIndex) {
+  return (Object.keys(deltaByCharIndex).every((charIndex) => {
+    return deltaByCharIndex[charIndex] === _finalCharDeltaLookup[charIndex];
+  }));
+}
+
+function drawGlitch() {
+  altBackground(2);
+  playGlitch(300);
+  mungeHtml();
+}
+
+function mungeHtml() {
+  const codeContainerEl = document.getElementById('code-container');
+  let codeString = codeContainerEl.innerText !== '' ? codeContainerEl.innerText : 'v' + VERSION;
+  codeContainerEl.innerText = codeString + '\n' + getScriptSnippet(_scriptLines);
+
+  document.getElementsByTagName('body')[0].append(getRandomHtmlEl());
+}
+
+function getScriptSnippet(_scriptLines) {
+  let snippet;
+  while (!snippet || snippet.length < 5) {
+    snippet = _scriptLines[getRandomInt(_scriptLines.length)].trim();
+  }
+  return snippet;
 }
 
 function getRandomHtmlEl() {
   const allEls = document.getElementsByTagName('*');
   let randomEl;
   while (!randomEl || !randomEl.id) {
-    randomEl = allEls[(Math.random() * allEls.length)|0];
+    randomEl = allEls[getRandomInt(allEls.length)];
   }
   const clonedEl = deepCloneEl(randomEl);
 
   const color = getRandomColor();
   const screenWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
   const screenHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-  const x = (Math.random() * (screenWidth - 100))|0;
-  const y = (Math.random() * (screenHeight - 100))|0;
-  const w = ((Math.random() * (screenWidth - x))|0) + 100;
-  const h = ((Math.random() * (screenHeight - y))|0) + 100;
-  const size = (Math.random() * 100)|0;
+  const x = getRandomInt(screenWidth - 100);
+  const y = getRandomInt(screenHeight - 100);
+  const w = getRandomInt(screenWidth - x) + 100;
+  const h = getRandomInt(screenHeight - y) + 100;
+  const size = getRandomInt(100);
 
-  let randomElType = htmlEls[(Math.random() * htmlEls.length)|0];
+  let randomElType = _htmlEls[getRandomInt(_htmlEls.length)];
   let el = document.createElement(randomElType);
   el.appendChild(clonedEl);
   el.setAttribute('style', 'z-index:1;font-size:' + size + 'px;color:' + color + ';position:absolute;top:' + y + ';left:' + x + ';width:' + w + ';height:' + h + ';');
@@ -122,85 +376,6 @@ function cloneEl(el, elAttributes) {
   return clonedEl;
 }
 
-function getScriptSnippet() {
-  let snippet;
-  while (!snippet || snippet.length < 5) {
-    snippet = state.scriptLines[(Math.random() * state.scriptLines.length)|0].trim();
-  }
-  return snippet;
-}
-
-function playGlitch(duration) {
-  const glitchEl = document.getElementById('glitch');
-  glitchEl.currentTime = (Math.random() * (glitchEl.duration - (duration / 1000)))|0;
-  window.setTimeout(() => {
-    glitchEl.play();
-    window.setTimeout(() => {
-      glitchEl.pause();
-    }, duration);
-  }, 100);
-}
-
-function playBeep() {
-  const beepEl = document.getElementById('beep');
-  beepEl.play();
-}
-
-function munge() {
-  if (state.level !== LEVEL.revealphrase) {
-    return;
-  }
-
-  updateMomentum(1);
-  createDecellerationTimeout();
-  updateScore((state.momentum * state.momentum) + 1)
-
-  const changeColor = state.momentum >= MOMENTUM_BONUS_THRESHOLD;
-  changeQuestionLetter(changeColor);
-}
-
-function glitch() {
-  altBackground(2);
-  playGlitch(300);
-  mungeHtml();
-}
-
-function updateMomentum(delta) {
-  state.momentum = Math.max(state.momentum + delta, 0);
-}
-
-function getBinaryScore() {
-  let scoreString = state.score.toString(2);
-  while (scoreString.length < 20) {
-    scoreString = '0' + scoreString;
-  }
-  return scoreString;
-}
-
-function updateScore(delta) {
-  state.score = Math.max(state.score + delta, 0);
-  const scoreString = getBinaryScore();
-  updateAnswerChars(scoreString, true);
-}
-
-function flashBackground(flashes) {
-  const bgEl = document.getElementById('bg');
-  const htmlEl = document.getElementsByTagName('html')[0];
-  const originalColor = htmlEl.getAttribute('background-color');
-
-  bgEl.style['display'] = 'none';
-  let flashCount = 0;
-  const timer = window.setInterval(() => {
-    htmlEl.style['background-color'] = getRandomColor();
-    if (flashCount > flashes) {
-      window.clearInterval(timer);
-      bgEl.style['display'] = 'block';
-      htmlEl.style['background-color'] = originalColor;
-    }
-    flashCount += 1;
-  }, 100);
-}
-
 function altBackground(flashes) {
   let flashCount = 0;
   const timer = window.setInterval(() => {
@@ -218,84 +393,175 @@ function altBackground(flashes) {
   }, 100);
 }
 
-function mungeHtml() {
-  document.getElementsByTagName('body')[0].append(getRandomHtmlEl());
-  document.getElementById('code-container').innerText = document.getElementById('code-container').innerText +
-    '\n' + getScriptSnippet();
+function getRandomInt(range) {
+  return Math.floor(Math.random() * range);
 }
 
-function finalizeScore() {
-
-  const totalTime = ((new Date() - state.gameTimeStart) / 1000)|0;
-  const timeBonus = 2000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
-  state.score += timeBonus;
-
-  if (state.score > getHighScore()) {
-    document.cookie = HIGH_SCORE_COOKIE + '=' + state.score + '; path=/';
-  }
-
-  document.getElementById('code-container').innerText = document.getElementById('code-container').innerText +
-    '\nTIME TAKEN: ' + totalTime + 's' +
-    '\nTIME BONUS: ' + timeBonus +
-    '\nSCORE: ' + state.score +
-    '\nALL TIME HIGH: ' + getHighScore() +
-    '\nv' + VERSION;
-}
-
-function changeQuestionLetter(changeColor) {
-  if (state.level !== LEVEL.revealphrase) {
-    return;
-  }
-  let newChar;
-  let charIndex;
-  let finalCharDelta;
-  while (!Number.isInteger(charIndex)) {
-    const nextCharIndex = (Math.random() * Object.keys(state.questionDeltaByCharIndex).length)|0;
-    finalCharDelta = finalCharDeltaLookup[nextCharIndex];
-    if (state.questionDeltaByCharIndex[nextCharIndex] <= finalCharDelta) {
-      charIndex = nextCharIndex;
-    }
-  }
-  if (state.questionDeltaByCharIndex[charIndex] === finalCharDelta) {
-    newChar = state.nextAudioQuestion[charIndex];
-    glitch();
-  } else {
-    newChar = getRandomChar();
-  }
-  state.questionDeltaByCharIndex[charIndex] += 1;
-  const finishedLevel = (Object.keys(state.questionDeltaByCharIndex).every((charIndex) => {
-    return state.questionDeltaByCharIndex[charIndex] > finalCharDeltaLookup[charIndex];
-  }));
-  if (finishedLevel) {
-    state.level = LEVEL.pregameover;
-  }
-  const spanEl = state.questionCharElByCharIndex[charIndex];
-  animateCharEl(spanEl, () => {
-    spanEl.innerHTML =  newChar === ' ' ? '&nbsp;' : newChar;
-    spanEl.style.color = changeColor ? getRandomColor() : state.charsBaseColor;
-    if (state.level === LEVEL.pregameover) {
-      spanEl.addEventListener("transitionend", () => {
-        if (state.level !== LEVEL.gameover) {
-          setGameOver();
-        }
-      }, {once: true});
-    }
-  });
-}
-
-function getRandomChar() {
-  const unicodeBracket = unicodeBrackets[(Math.random() * Math.min(state.momentum, 10))|0];
+function getRandomChar(momentum) {
+  const unicodeBracket = _unicodeBrackets[getRandomInt(Math.min(momentum, 10))];
   const startingInt = parseInt(unicodeBracket[0], 16);
   const range = parseInt(unicodeBracket[1], 16);
-  const randomInt = startingInt + ((Math.random() * range)|0);
+  const randomInt = startingInt + getRandomInt(range);
   return String.fromCharCode(randomInt);
 }
 
-function createDecellerationTimeout() {
+function drawNewLetter(el, char, color, shouldAnimate, callback) {
+  char = char === ' ' ? '&nbsp;' : char;
+  if (!shouldAnimate) {
+    el.innerHTML = char;
+    return callback();
+  }
+
+  // el.classList.add('notransition'); // Disable transitions
+  el.style.color = 'black';
+  el.offsetHeight; // Trigger a reflow, flushing the CSS changes
+  // el.classList.remove('notransition'); // Re-enable transitions
+  addTransitionEndListener(el, 150, () => {
+    el.innerHTML = char;
+    el.style.color = color;
+    addTransitionEndListener(el, 150, () => {
+      if (callback) {
+        return callback();
+      }
+    });
+  });
+}
+
+function addTransitionEndListener(el, timeout, callback) {
+  let done = false;
+  let errorHandler;
+  let callbackHandler = () => {
+    if (!done) {
+      done = true;
+      window.clearTimeout(errorHandler);
+      return callback();
+    }
+  };
+  errorHandler = window.setTimeout(callbackHandler, timeout);
+  el.addEventListener('transitionend', callbackHandler, {once: true});
+}
+
+function getInitRevealWordLevel(state, revealWordHandler) {
+  return function initRevealWordLevel() {
+    const codeContainerEl = document.getElementById('code-container');
+    const tunesEl = document.getElementById('tunes');
+
+    let audioFile;
+    audioFile = 'audio/' + state.currentAudioKey + '.mp3';
+    tunesEl.setAttribute('src', audioFile);
+    tunesEl.play();
+
+    const scoreString = getBinaryScore(state.score);
+    state.answerCharElByCharIndex = drawChars(scoreString, 'score', 1000);
+    drawFlashingBackground(5);
+    playGlitch(1000);
+
+    codeContainerEl.addEventListener('click', revealWordHandler);
+    codeContainerEl.style.cursor = 'pointer';
+
+    let questionToPad = state.initialQuestion + '?'
+    let audioTitleToPad = _audioTitleByKey[state.nextAudioKey];
+    if (audioTitleToPad.length > questionToPad.length) {
+      questionToPad = padWord(questionToPad, audioTitleToPad.length);
+    } else {
+      audioTitleToPad = padWord(audioTitleToPad, questionToPad.length);
+    }
+    state.questionCharElByCharIndex = drawChars(questionToPad, 'question', 0);
+    state.questionDeltaByCharIndex = {};
+    for (const charIndex of Object.keys(state.questionCharElByCharIndex)) {
+      state.questionDeltaByCharIndex[charIndex] = 0;
+    }
+    state.nextAudioTitlePadded = audioTitleToPad;
+    state.level = LEVEL.revealphrase;
+  };
+}
+
+function padWord(word, length) {
+  while (word.length < length) {
+    if ((length - word.length) % 2) {
+      word = ' ' + word;
+    } else {
+      word = word + ' ';
+    }
+  }
+  return word;
+}
+
+function getBinaryScore(currentScore) {
+  let scoreString = currentScore.toString(2);
+  while (scoreString.length < 20) {
+    scoreString = '0' + scoreString;
+  }
+  return scoreString;
+}
+
+function drawFlashingBackground(flashes) {
+  const bgEl = document.getElementById('bg');
+  const htmlEl = document.getElementsByTagName('html')[0];
+  const originalColor = htmlEl.getAttribute('background-color');
+
+  bgEl.style['display'] = 'none';
+  let flashCount = 0;
+  const timer = window.setInterval(() => {
+    htmlEl.style['background-color'] = getRandomColor();
+    if (flashCount > flashes) {
+      window.clearInterval(timer);
+      bgEl.style['display'] = 'block';
+      htmlEl.style['background-color'] = originalColor;
+    }
+    flashCount += 1;
+  }, 100);
+}
+
+function getRandomColor() {
+  return '#'+((Math.random()*0x777777) + 0x666666).toString(16).slice(-6);
+}
+
+function playGlitch(duration) {
+  const glitchEl = document.getElementById('glitch');
+  glitchEl.currentTime = getRandomInt(glitchEl.duration - (duration / 1000));
   window.setTimeout(() => {
-    updateMomentum(-1);
-    // console.log(state.momentum);
-  }, DECELLERATION_INTERVAL);
+    glitchEl.play();
+    window.setTimeout(() => {
+      glitchEl.pause();
+    }, duration);
+  }, 100);
+}
+
+function drawBackgroundImage(question, audioKey) {
+  Promise.resolve().then(() => {
+    if (audioKey !== '0') {
+      return Promise.resolve('https://deaconmeek.github.io/experientialradio/img/' + audioKey + '.jpg');
+    } else {
+      return getImageUrlFromQuestion();
+    }
+  }).then((imageUrl) => {
+    buildImageData(imageUrl).then((imageData) => {
+      if (audioKey === '0') {
+        filterImageData(imageData, 'blur', {amount: 1});
+        filterImageData(imageData);
+      }
+      const mainCanvasEl = document.getElementById('main-image');
+      mainCanvasEl.getContext('2d').putImageData(imageData,0,0);
+      const imageContainerEl = document.getElementById('bg');
+      imageContainerEl.style.opacity = 1;
+
+      const mainCanvasAltEl = document.getElementById('main-image-alt');
+      mainCanvasAltEl.height = mainCanvasEl.height;
+      mainCanvasAltEl.width = mainCanvasEl.width;
+      filterImageData(imageData, 'invert');
+      mainCanvasAltEl.getContext('2d').putImageData(imageData,0,0);
+    })
+  });
+}
+
+function getImageUrlFromQuestion(question) {
+  const url = `https://us-central1-dazzling-inferno-8250.cloudfunctions.net/fetchImageUrl?question=${encodeURIComponent(question)}`;
+  // const url = `http://localhost:5000/dazzling-inferno-8250/us-central1/fetchImageUrl?question=${encodeURIComponent(queryString)}`;
+  return fetchFromUrl(url)
+    .catch(() => {
+      return 'https://deaconmeek.github.io/experientialradio/img/waaat.jpg';
+    });
 }
 
 function buildImageData(url) {
@@ -320,97 +586,66 @@ function buildImageData(url) {
 function filterImageData(imageData, filterToApply, props) {
   props = props || {};
   if (!filterToApply) {
-    filterToApply = imgFilters[(Math.random() * imgFilters.length)|0];
+    filterToApply = _imgFilters[getRandomInt(_imgFilters.length)];
   }
   // console.log('filter', filterToApply);
   JSManipulate[filterToApply].filter(imageData, props);
 }
 
-function generateQuestion(allowFromQueryParams) {
-  let queryQuestion;
-  if (document.location.search) {
-    const params = document.location.search.substr(1).split('&');
-    for (const param of params) {
-      if (param.split('=')[0] === 'q') {
-        queryQuestion = decodeURIComponent(param.split('=')[1]);
-        break;
+function fetchFromUrl(url) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === XMLHttpRequest.DONE) {
+        if (xhr.status === 200) {
+          resolve(xhr.responseText);
+        } else {
+          reject(xhr.status);
+        }
       }
-    }
-  }
-  if (allowFromQueryParams && queryQuestion) {
-    return queryQuestion;
-  }
-  const queryQuestionComponents = queryQuestion ? queryQuestion.split(' ') : [null];
-  const lastAdjective = queryQuestionComponents[0];
-  const lastNoun = queryQuestionComponents[queryQuestionComponents.length - 1];
-
-  let adjective;
-  let noun;
-  while (!adjective || adjective === lastAdjective) {
-    adjective = phrases[Math.floor(Math.random() * phrases.length)].split(' ')[0];
-  }
-  while (!noun || noun === lastNoun) {
-    noun = phrases[Math.floor(Math.random() * phrases.length)].split(' ')[1];
-  }
-  return `${adjective} ${noun}`;
-}
-
-function generateImageUrl(queryString, callback) {
-  const xhr = new XMLHttpRequest();
-  const url = `https://us-central1-dazzling-inferno-8250.cloudfunctions.net/fetchImageUrl?question=${encodeURIComponent(queryString)}`;
-  // const url = `http://localhost:5000/dazzling-inferno-8250/us-central1/fetchImageUrl?question=${encodeURIComponent(queryString)}`;
-  xhr.open('GET', url, true);
-  xhr.onreadystatechange = function () {
-    if(xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-      callback(xhr.responseText);
-      return;
-    }
-  };
-  xhr.send();
-}
-
-function setGameStart() {
-  const codeContainerEl = document.getElementById('code-container');
-  const tunesEl = document.getElementById('tunes');
-  const scoreString = getBinaryScore();
-  setChars(scoreString, 'score', 1000);
-  flashBackground(5);
-  playGlitch(1000);
-  tunesEl.play();
-  codeContainerEl.addEventListener('click', munge);
-  codeContainerEl.style.cursor = 'pointer';
-
-  let paddedQuestion = state.initialQuestion + '?'
-  if (state.nextAudioQuestion.length > paddedQuestion.length) {
-    paddedQuestion = padWord(paddedQuestion, state.nextAudioQuestion.length);
-  } else {
-    state.nextAudioQuestion = padWord(state.nextAudioQuestion, paddedQuestion.length);
-  }
-  setChars(paddedQuestion, 'question', 0);
-  state.questionDeltaByCharIndex = {};
-  for (const charIndex of Object.keys(state.questionCharElByCharIndex)) {
-    state.questionDeltaByCharIndex[charIndex] = 0;
-  }
-
-  state.level = LEVEL.whackmole;
-}
-
-function setGameOver() {
-  state.level = LEVEL.gameover;
-  const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) +
-    '?q=' + encodeURIComponent(state.nextAudioQuestion.trim());
-  const questionClickHandler = () => document.location = nextHref;
-  for (const spanEl of Object.values(state.questionCharElByCharIndex)) {
-    spanEl.style.cursor = 'pointer';
-    spanEl.addEventListener('click', questionClickHandler);
-  }
-  const codeEl = document.getElementById('code-container');
-  codeEl.style.cursor = 'pointer';
-  codeEl.addEventListener('click', () => {
-    codeEl.style.color = codeEl.style.color === 'black' ? 'white' : 'black';
+    };
+    xhr.send();
   });
-  altBackground(Number.MAX_SAFE_INTEGER);
-  finalizeScore();
+}
+
+function getInitGameOver(state) {
+  return function () {
+    state.level = LEVEL.gameover;
+    const nextAudioTitle = _audioTitleByKey[state.nextAudioKey];
+    const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) +
+      '?q=' + encodeURIComponent(nextAudioTitle.trim());
+    const questionClickHandler = () => document.location = nextHref;
+    for (const spanEl of Object.values(state.questionCharElByCharIndex)) {
+      spanEl.style.cursor = 'pointer';
+      spanEl.addEventListener('click', questionClickHandler);
+    }
+    const codeEl = document.getElementById('code-container');
+    codeEl.style.cursor = 'pointer';
+    codeEl.addEventListener('click', () => {
+      codeEl.style.color = codeEl.style.color === 'black' ? 'white' : 'black';
+    });
+    altBackground(Number.MAX_SAFE_INTEGER);
+    state.score = finalizeScore(state.score, state.cheat, state.gameTimeStart);
+  };
+}
+
+function finalizeScore(score, cheat, gameTimeStart) {
+  const totalTime = ((new Date() - gameTimeStart) / 1000)|0;
+  const timeBonus = cheat ? 0 : 2000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
+  score += timeBonus;
+
+  if (score > getHighScore()) {
+    document.cookie = HIGH_SCORE_COOKIE + '=' + score + '; path=/';
+  }
+
+  document.getElementById('code-container').innerText = document.getElementById('code-container').innerText +
+    '\nTIME TAKEN: ' + totalTime + 's' +
+    '\nTIME BONUS: ' + timeBonus +
+    '\nSCORE: ' + score +
+    '\nALL TIME HIGH: ' + getHighScore();
+
+  return score;
 }
 
 function getHighScore() {
@@ -418,7 +653,7 @@ function getHighScore() {
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {
     const key = cookie.trim().split('=')[0];
-    if (key === 'alltimehigh') {
+    if (key === HIGH_SCORE_COOKIE) {
       highScore = cookie.split('=')[1];
       break;
     }
@@ -426,189 +661,20 @@ function getHighScore() {
   return parseInt(highScore, 10) || 0;
 }
 
-function padWord(word, length) {
-  while (word.length < length) {
-    if ((length - word.length) % 2) {
-      word = ' ' + word;
-    } else {
-      word = word + ' ';
-    }
-  }
-  return word;
-}
-
-// Assumes string is of same length as state.answerCharElByCharIndex
-function updateAnswerChars(string, animate) {
-  const charEls = Object.values(state.answerCharElByCharIndex);
-  for (const [i, char] of [...string].entries()) {
-    const spanEl = charEls[i];
-    if (spanEl.innerHTML === char) {
-      continue;
-    }
-    if (animate) {
-      animateCharEl(spanEl, () => {
-        spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
-        spanEl.style.color = state.charsBaseColor;
-      });
-    } else {
-      spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
-    }
-  }
-}
-
-function animateCharEl(el, callback) {
-  // el.classList.add('notransition'); // Disable transitions
-  el.style.color = 'black';
-  el.offsetHeight; // Trigger a reflow, flushing the CSS changes
-  // el.classList.remove('notransition'); // Re-enable transitions
-  let done = false;
-  let errorHandler;
-  let callbackHandler = () => {
-    if (!done) {
-      done = true;
-      window.clearTimeout(errorHandler);
-      return callback();
-    }
-  }
-  errorHandler = window.setTimeout(callbackHandler, 500);
-  el.addEventListener("transitionend", callbackHandler, {once: true});
-}
-
-function setChars(string, type, displayDelay, clickHandler) {
-  let containerEl;
-  let charElByCharIndex;
-  let className;
-  if (type === 'question') {
-    containerEl = document.getElementById('question-subcontainer');
-    state.questionCharElByCharIndex = {};
-    charElByCharIndex = state.questionCharElByCharIndex;
-  } else if (type === 'answer') {
-    containerEl = document.getElementById('answer-subcontainer');
-    state.answerCharElByCharIndex = {};
-    charElByCharIndex = state.answerCharElByCharIndex;
-  } else if (type === 'score') {
-    containerEl = document.getElementById('answer-subcontainer');
-    state.answerCharElByCharIndex = {};
-    charElByCharIndex = state.answerCharElByCharIndex;
-    className = 'preformatted';
-  }
-
-  containerEl.innerHTML = '';
-  for (const [i, char] of [...string].entries()) {
-    const spanEl = document.createElement('span');
-    spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
-    spanEl.classList.add('chars');
-    if (className) {
-      spanEl.classList.add(className);
-    }
-    if (clickHandler) {
-      spanEl.style.cursor = 'pointer';
-      spanEl.addEventListener('click', clickHandler);
-    }
-    containerEl.appendChild(spanEl);
-    charElByCharIndex[i] = spanEl;
-  }
-  window.setTimeout(() => {
-    for (const i of Object.keys(charElByCharIndex)) {
-      charElByCharIndex[i].style.opacity = 1;
-    }
-  }, displayDelay);
-}
-
-function init() {
-  const newQuestion = generateQuestion(true);
-
-  // Init next audio title
-  let audioTitle;
-  while (!audioTitle || audioTitle === newQuestion) {
-    const randomInt = Math.floor(Math.random() * Object.keys(audioMeta).length) + 1;
-    audioTitle = audioMeta[randomInt];
-  }
-  state.nextAudioQuestion = audioTitle;
-  state.initialQuestion = newQuestion;
-
-  // Init question (relies on state.nextAudioQuestion)
-  const nextQuestion = encodeURIComponent(generateQuestion());
-  const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + nextQuestion;
-  const questionClickHandler = () => document.location.replace(nextHref);
-  setChars(state.initialQuestion + '?', 'question', 1000, questionClickHandler);
-  state.charsBaseColor = state.questionCharElByCharIndex[0].style.color;
-
-  // Init answer
-  const answerClickHandler = function (e) {
-    const el = e.target;
-    if (el.style.color === 'black') {
+function addKonamiCodeListener(callback) {
+  let keyInput = '';
+  const code = '38384040373937396665';
+  document.addEventListener('keydown', function (e) {
+    keyInput += String(e.keyCode);
+    if (keyInput === code) {
+      callback();
       return;
     }
-    if (!state.gameTimeStart) {
-      state.gameTimeStart = new Date();
+    if (code.indexOf(keyInput) === 0) {
+      return;
     }
-    playBeep();
-    el.style.color = 'black';
-    const answerCharEls = Object.values(state.answerCharElByCharIndex);
-    const activateGame = answerCharEls.every(o => o.innerHTML === '&nbsp;' || o.style.color === 'black');
-    if (activateGame) {
-      for (const spanEl of answerCharEls) {
-        spanEl.removeEventListener('click', answerClickHandler);
-      }
-      setGameStart();
-    }
-    window.setTimeout(() => {
-      el.style.color = state.charsBaseColor;
-    }, Math.max(((Math.random() * ANSWER_CLICK_TIMEOUT) | 0), 2000));
-  };
-  const answer = 'Experiential radio.';
-  setChars(answer, 'answer', 2000, answerClickHandler);
-
-  // Init current audio track (relies on state.initialQuestion)
-  if (Object.values(audioMeta).indexOf(state.initialQuestion) >= 0) {
-    state.audioModeKey = Object.keys(audioMeta)[Object.values(audioMeta).indexOf(state.initialQuestion)];
-  } else {
-    state.audioModeKey = '0';
-  }
-  const tunesEl = document.getElementById('tunes');
-  let audioFile;
-  audioFile = 'audio/' + state.audioModeKey + '.mp3';
-  tunesEl.setAttribute('src', audioFile);
-
-  // Init background image
-  Promise.resolve().then(() => {
-    if (state.audioModeKey !== '0') {
-      return Promise.resolve('https://deaconmeek.github.io/experientialradio/img/' + state.audioModeKey + '.jpg');
-    } else {
-      return new Promise((resolve) => {
-        generateImageUrl(state.initialQuestion, (imageUrl) => {
-          // console.log(imageUrl);
-          resolve(imageUrl || 'https://deaconmeek.github.io/experientialradio/img/waaat.jpg');
-        });
-      });
-    }
-  }).then((imageUrl) => {
-    buildImageData(imageUrl).then((imageData) => {
-      if (state.audioModeKey === '0') {
-        filterImageData(imageData, 'blur', {amount: 1});
-        filterImageData(imageData);
-      }
-      const mainCanvasEl = document.getElementById('main-image');
-      mainCanvasEl.getContext('2d').putImageData(imageData,0,0);
-      const imageContainerEl = document.getElementById('bg');
-      imageContainerEl.style.opacity = 1;
-
-      const mainCanvasAltEl = document.getElementById('main-image-alt');
-      mainCanvasAltEl.height = mainCanvasEl.height;
-      mainCanvasAltEl.width = mainCanvasEl.width;
-      filterImageData(imageData, 'invert');
-      mainCanvasAltEl.getContext('2d').putImageData(imageData,0,0);
-    })
+    keyInput = String(e.keyCode);
   });
-
-  // Init state.scriptLines
-  const client = new XMLHttpRequest();
-  client.open('GET', 'https://deaconmeek.github.io/experientialradio/script.js');
-  client.onreadystatechange = function() {
-    state.scriptLines = client.responseText.split('\n');
-  };
-  client.send();
 }
 
 // Loader
