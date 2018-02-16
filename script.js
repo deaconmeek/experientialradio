@@ -48,7 +48,7 @@ const LEVEL = {
 const CHARS_BASE_COLOR = 'aliceblue';
 const DECELLERATION_INTERVAL = 1500;
 const MOMENTUM_BONUS_THRESHOLD = 15;
-const ANSWER_CLICK_TIMEOUT = 20000;
+const ANSWER_CLICK_TIMEOUT = 15000;
 const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
 const VERSION = '1.2.2';
@@ -201,17 +201,8 @@ function drawChars(string, type, displayDelay, clickHandler) {
 }
 
 function getWhackMoleHandler(state, initRevealWordLevel) {
-  const whackMoleHandler = function (e) {
-    const el = e.target;
-    if (el.style.color === 'black') {
-      return;
-    }
-    if (!state.gameTimeStart) {
-      state.gameTimeStart = new Date();
-      state.level = LEVEL.whackmole;
-    }
-    playBeep();
-    el.style.color = 'black';
+  let clickCounter = 0;
+  const checkForComplete = function () {
     const answerCharEls = Object.values(state.answerCharElByCharIndex);
     const activateGame = answerCharEls.every(o => o.innerHTML === '&nbsp;' || o.style.color === 'black');
     if (activateGame) {
@@ -220,9 +211,55 @@ function getWhackMoleHandler(state, initRevealWordLevel) {
       }
       initRevealWordLevel();
     }
+  };
+  const whackMoleHandler = function (e) {
+    const el = e.target;
+
+    if (el.style.color === 'black') {
+      return;
+    }
+    if (!state.gameTimeStart) {
+      state.gameTimeStart = new Date();
+      state.level = LEVEL.whackmole;
+    }
+
+    el.style.color = 'black';
+    playBeep();
+    checkForComplete();
+    clickCounter += 1;
+    const minHideTime = (clickCounter * 300) + 2000;
+    const hideTime = Math.max(getRandomInt(ANSWER_CLICK_TIMEOUT), minHideTime);
     window.setTimeout(() => {
       el.style.color = CHARS_BASE_COLOR;
-    }, Math.max(getRandomInt(ANSWER_CLICK_TIMEOUT), 2000));
+    }, hideTime);
+
+    // Hide adjacent els with a slight delay
+    const siblingEls = [];
+    for (let charIndex of Object.keys(state.answerCharElByCharIndex)) {
+      charIndex = parseInt(charIndex);
+      const spanEl = state.answerCharElByCharIndex[charIndex];
+      if (el === spanEl) {
+        if (charIndex > 0) {
+          siblingEls.push(state.answerCharElByCharIndex[charIndex - 1]);
+        }
+        if (charIndex < (Object.keys(state.answerCharElByCharIndex).length - 1)) {
+          siblingEls.push(state.answerCharElByCharIndex[charIndex + 1]);
+        }
+        break;
+      }
+    }
+    for (const siblingEl of siblingEls) {
+      if (siblingEl.style.color !== 'black') {
+        window.setTimeout(() => {
+          siblingEl.style.color = 'black';
+          checkForComplete();
+          const hideTime = Math.max(getRandomInt(ANSWER_CLICK_TIMEOUT / 1.5), minHideTime)|0;
+          window.setTimeout(() => {
+            siblingEl.style.color = CHARS_BASE_COLOR;
+          }, hideTime);
+        }, 50);
+      }
+    }
   };
   return whackMoleHandler;
 }
