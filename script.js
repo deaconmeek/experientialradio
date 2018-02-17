@@ -3,11 +3,12 @@
 
 let _scriptLines;
 let _cssValuesByCssProperty;
-const _htmlEls = ['a', 'basefont', 'big', 'blink', 'blockquote', 'b', 'button', 'center', 'code', 'em', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'iframe', 'kbd', 'li', 'marquee', 'ol', 'q', 'samp', 'small', 'strikeout', 'strong', 'sub', 'sup', 'textarea', 'tt', 'u', 'ul'];
+const _htmlEls = ['a', 'basefont', 'big', 'blink', 'blockquote', 'b', 'button', 'center', 'code', 'em', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'iframe', 'iframe', 'iframe', 'iframe', 'iframe', 'kbd', 'li', 'marquee', 'ol', 'q', 'samp', 'small', 'strikeout', 'strong', 'sub', 'sup', 'textarea', 'tt', 'u', 'ul'];
 const _imgFilters = ['circlesmear', 'diffusion', 'dither', 'noise', 'pixelate', 'posterize']; // 'invert', 'sepia', 'solarize'
 const _finalCharDeltaLookup = [10, 22, 13, 19, 16, 21, 23, 14, 24, 20, 24, 15, 11, 17, 20, 21, 23, 12, 16, 22, 21, 11, 14, 19, 16, 18, 22, 21, 24, 11, 15, 18, 23, 13, 18, 19, 19, 23, 16, 15, 16, 13, 10, 12, 22, 22, 17, 23, 23, 14];
 // const _finalCharDeltaLookup = new Array(40).fill(1);
 
+const host = 'https://deaconmeek.github.io/experientialradio/';
 const _phrases = [
   'Holy fuck', 'Conscientious objector', 'Unreasonable behaviour', 'Magnificent void', 'Reasonable doubt', 'Sound advice',
   'Questionable content', 'Conventional wisdom', 'Political agenda', 'Unusual predicament', 'Unique situation', 'Naughty nature',
@@ -45,14 +46,24 @@ const LEVEL = {
   'leveltwo': 2,
   'gameover': 3,
 };
+
+const VERSION = '1.5.1';
+
 const CHARS_BASE_COLOR = 'aliceblue';
 const DECELLERATION_INTERVAL = 1500;
 const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 15000;
 const TIME_BONUS_THRESHOLD = 80;
+
 const COOKIE_HIGH_SCORE = 'all-time-high';
 const COOKIE_HIGH_SCORE_BY_AUDIO_KEY = 'high-by-tune';
-const VERSION = '1.5.1';
+const COOKIE_BADGES_EARNED = 'badges';
+
+const BADGE_ESCALATION_BY_MULTIPLIER = {
+  2: 'double',
+  3: 'triple',
+};
+const BADGE_INCEPTION = 'inception';
 
 function init() {
   const state = {
@@ -63,13 +74,14 @@ function init() {
 
   initScriptLines();
   initCssProperties();
-  initCodeContainer();
+  addIFrameListener(state);
 
   state.initialQuestion = generateQuestion(true);
   state.currentAudioKey = calculateCurrentAudioKey(state.initialQuestion);
   state.nextAudioKey = generateNextAudioKey(state.initialQuestion);
   drawBackgroundImage(state.initialQuestion, state.currentAudioKey);
 
+  state.badgesEarned = {};
   state.level = LEVEL.prestart;
 
   runLevelOne(state)
@@ -265,8 +277,67 @@ function runGameOver(state) {
   // addIframe();
   altBackground(Number.MAX_SAFE_INTEGER);
   state.score = finalizeScore(state.score, state.currentAudioKey, state.cheat, state.gameTimeStart);
-  const scoreString = getBinaryScore(state.score);
-  drawNewScore(scoreString, CHARS_BASE_COLOR, true);
+
+  if (inIframe()) {
+    addBadge(state, BADGE_INCEPTION);
+  }
+  const collectIframeScoreBonusFn = () => {
+    const iframeEls = [...document.getElementsByTagName('iframe')];
+    for (const iframeEl of iframeEls) {
+      iframeEl.contentWindow.postMessage('requestBadges', '*');
+    }
+  };
+  initCodeContainer(collectIframeScoreBonusFn);
+}
+
+function addIFrameListener(state) {
+  window.addEventListener('message', (event) => {
+    if (event.origin !== 'https://deaconmeek.github.io' && event.origin !== 'http://127.0.0.1:8080') {
+      return;
+    }
+    if (event.data === 'requestBadges') {
+      event.source.postMessage(state.badgesEarned, event.origin);
+    } else if (typeof event.data === 'object') {
+      const badgesEarned = Object.keys(event.data);
+      for (const badgeKey of badgesEarned) {
+        const multiplier = getBadgeMultiplier(badgeKey);
+        const { baseBadgeKey, escalatedBadgeKey } = getBaseAndEscalatedBadgeKeys(badgeKey, multiplier);
+        if (!state.badgesEarned[escalatedBadgeKey]) {
+          addBadge(state, baseBadgeKey, multiplier);
+        }
+      }
+    }
+  }, false);
+}
+
+function getBadgeMultiplier(badgeKey) {
+  let multiplier;
+  let reverseSortedMultipliers = Object.keys(BADGE_ESCALATION_BY_MULTIPLIER).sort().reverse();
+  for (const curMultiplier of reverseSortedMultipliers) {
+    const escalationKey = BADGE_ESCALATION_BY_MULTIPLIER[curMultiplier];
+    if (badgeKey.indexOf(escalationKey) === 0) {
+      multiplier = Math.min(curMultiplier + 1, reverseSortedMultipliers[0]);
+      break;
+    }
+  }
+  if (!multiplier) {
+    multiplier = reverseSortedMultipliers[reverseSortedMultipliers.length - 1];
+  }
+  return multiplier;
+}
+
+function getBaseAndEscalatedBadgeKeys(badgeKey, multiplier) {
+  let baseBadgeKey;
+  let escalatedBadgeKey;
+  const curEscalationKey = BADGE_ESCALATION_BY_MULTIPLIER[multiplier - 1];
+  const newEscalationKey = BADGE_ESCALATION_BY_MULTIPLIER[multiplier];
+  if (!curEscalationKey) {
+    baseBadgeKey = badgeKey;
+  } else {
+    baseBadgeKey = badgeKey.replace(curEscalationKey + '-', '');
+  }
+  escalatedBadgeKey = newEscalationKey + '-' + baseBadgeKey;
+  return { baseBadgeKey, escalatedBadgeKey };
 }
 
 function addClickHandlerToCharEls(type, clickHandler) {
@@ -285,8 +356,16 @@ function removeClickHandlerFromCharEls(type, clickHandler) {
   }
 }
 
+function initCodeContainer(collectIframeScoreBonusFn) {
+  const codeEl = document.getElementById('code-container');
+  codeEl.addEventListener('click', () => {
+    codeEl.style.color = codeEl.style.color === 'black' ? 'white' : 'black';
+    collectIframeScoreBonusFn();
+  });
+}
+
 function initScriptLines() {
-  fetchFromUrl('https://deaconmeek.github.io/experientialradio/script.js')
+  fetchFromUrl(host + 'script.js')
     .then((script) => {
       _scriptLines = script.split('\n');
     }).catch(() => {
@@ -295,7 +374,7 @@ function initScriptLines() {
 }
 
 function initCssProperties() {
-  fetchFromUrl('https://deaconmeek.github.io/experientialradio/valuesByCssProperty.json')
+  fetchFromUrl(host + 'valuesByCssProperty.json')
     .then((json) => {
       _cssValuesByCssProperty = JSON.parse(json);
     }).catch(() => {
@@ -414,7 +493,7 @@ function drawGlitch() {
   altBackground(2);
   playGlitch(300);
   mungeHtml();
-  logCode();
+  logCode(getScriptSnippet(_scriptLines));
 }
 
 function mungeHtml() {
@@ -422,10 +501,10 @@ function mungeHtml() {
   glitchContainerEl.appendChild(getRandomHtmlEls());
 }
 
-function logCode() {
+function logCode(text) {
   const codeContainerEl = document.getElementById('code-container');
   let codeString = codeContainerEl.innerText !== '' ? codeContainerEl.innerText : 'v' + VERSION;
-  codeContainerEl.innerText = codeString + '\n' + getScriptSnippet(_scriptLines);
+  codeContainerEl.innerText = codeString + '\n' + text;
 }
 
 function getScriptSnippet(_scriptLines) {
@@ -452,13 +531,19 @@ function getRandomHtmlEls(forceType) {
   const minWidth = 100;
   const x = getRandomInt(containerDimensions.width - minWidth);
   const y = getRandomInt(containerDimensions.height - minHeight);
-  const w = getRandomInt(containerDimensions.width - x) + minWidth;
-  const h = getRandomInt(containerDimensions.height - y) + minHeight;
+  const w = Math.max(getRandomInt(containerDimensions.width - x), minWidth);
+  const h = Math.max(getRandomInt(containerDimensions.height - y), minHeight);
 
-  let el = getRandomHtmlEl(forceType)
-  let subEl = getRandomHtmlEl();
-  subEl.appendChild(clonedEl);
-  el.appendChild(clonedEl);
+  let el;
+  let subEl;
+  if (forceType) {
+    el = getRandomHtmlEl(forceType);
+  } else {
+    el = getRandomHtmlEl();
+    subEl = getRandomHtmlEl();
+    el.appendChild(subEl);
+    subEl.appendChild(clonedEl);
+  }
   el.style['position'] = 'absolute';
   el.style['top'] = y;
   el.style['left'] = x;
@@ -477,10 +562,10 @@ function getRandomHtmlEl(forceType) {
     el.style[propertyName] = cssPropertyByName[propertyName];
   }
   if (el.tagName === 'IFRAME') {
-    el.setAttribute('src', 'index.html');
+    el.setAttribute('src', host + 'index.html');
   } else if (el.tabName === 'IMG') {
     const randomKey = Object.keys(_audioTitleByKey)[getRandomInt(Object.keys(_audioTitleByKey).length)];
-    el.setAttribute('src', 'https://deaconmeek.github.io/experientialradio/img/' + randomKey + '.jpg');
+    el.setAttribute('src', host + 'img/' + randomKey + '.jpg');
   }
   return el;
 }
@@ -690,7 +775,7 @@ function playGlitch(duration) {
 function drawBackgroundImage(question, audioKey) {
   Promise.resolve().then(() => {
     if (audioKey !== '0') {
-      return Promise.resolve('https://deaconmeek.github.io/experientialradio/img/' + audioKey + '.jpg');
+      return Promise.resolve(host + 'img/' + audioKey + '.jpg');
     } else {
       return getImageUrlFromQuestion();
     }
@@ -719,7 +804,7 @@ function getImageUrlFromQuestion(question) {
   // const url = `http://localhost:5000/dazzling-inferno-8250/us-central1/fetchImageUrl?question=${encodeURIComponent(queryString)}`;
   return fetchFromUrl(url)
     .catch(() => {
-      return 'https://deaconmeek.github.io/experientialradio/img/waaat.jpg';
+      return host + 'img/waaat.jpg';
     });
 }
 
@@ -768,12 +853,57 @@ function fetchFromUrl(url) {
   });
 }
 
+function addBadge(state, baseBadgeKey, multiplier) {
+  let bonus = 0;
+  if (baseBadgeKey === BADGE_INCEPTION) {
+    bonus = 10000;
+  }
+  let badgeKey = baseBadgeKey;
+  if (multiplier) {
+    bonus = bonus * multiplier;
+    const { escalatedBadgeKey } = getBaseAndEscalatedBadgeKeys(baseBadgeKey, multiplier);
+    badgeKey = escalatedBadgeKey;
+  }
+  state.badgesEarned[badgeKey] = true;
+  state.score += bonus;
+  setHighScores(state.score, state.currentAudioKey);
+  setBadge(badgeKey);
+
+  logCode('BADGE EARNED: ' + badgeKey.toUpperCase() + '!   +' + bonus);
+  logCode('NEW SCORE: ' + state.score);
+
+  const scoreString = getBinaryScore(state.score);
+  drawNewScore(scoreString, getRandomColor(), true);
+}
+
+function setBadge(badgeKey) {
+  const badgeCountByBadgeName = getCookie(COOKIE_BADGES_EARNED) || {};
+  badgeCountByBadgeName[badgeKey] = (badgeCountByBadgeName[badgeKey] || 0) + 1;
+  setCookie(COOKIE_BADGES_EARNED, badgeCountByBadgeName);
+}
+
 function finalizeScore(score, audioKey, cheat, gameTimeStart) {
   gameTimeStart = gameTimeStart || new Date();
   const totalTime = ((new Date() - gameTimeStart) / 1000)|0;
   const timeBonus = cheat ? 77.77 : 2000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
   score += parseInt(timeBonus);
 
+  const {highScore, highScoreForTune} = setHighScores(score);
+
+  logCode('TIME TAKEN: ' + totalTime + 's');
+  logCode('TIME BONUS: ' + timeBonus);
+  logCode('SCORE: ' + score);
+  logCode('HIGH SCORE FOR TUNE: ' + highScoreForTune);
+  logCode('ALL TIME HIGH: ' + highScore);
+
+  const scoreString = getBinaryScore(score);
+  const color = timeBonus > 0 ? getRandomColor() : CHARS_BASE_COLOR;
+  drawNewScore(scoreString, color, true);
+
+  return score;
+}
+
+function setHighScores(score, audioKey) {
   let highScore = getCookie(COOKIE_HIGH_SCORE) || 0;
   const highScoreByAudioKey = getCookie(COOKIE_HIGH_SCORE_BY_AUDIO_KEY) || {};
   let highScoreForTune = highScoreByAudioKey[audioKey] || 0;
@@ -787,31 +917,15 @@ function finalizeScore(score, audioKey, cheat, gameTimeStart) {
     highScoreForTune = score;
     setCookie(COOKIE_HIGH_SCORE_BY_AUDIO_KEY, highScoreByAudioKey);
   }
-
-  const codeContainerEl = document.getElementById('code-container');
-  codeContainerEl.innerText = codeContainerEl.innerText +
-    '\nTIME TAKEN: ' + totalTime + 's' +
-    '\nTIME BONUS: ' + timeBonus +
-    '\nSCORE: ' + score +
-    '\nHIGH SCORE FOR TUNE: ' + highScoreForTune;
-    '\nALL TIME HIGH: ' + highScore;
-
-  return score;
+  return {highScore, highScoreForTune};
 }
 
-function initCodeContainer() {
-  const codeEl = document.getElementById('code-container');
-  codeEl.addEventListener('click', () => {
-    codeEl.style.color = codeEl.style.color === 'black' ? 'white' : 'black';
-  });
+function addIframe() {
+  const iframeEls = document.getElementsByTagName('iframe');
+  if (iframeEls.length === 0) {
+    document.getElementById('glitch-container').appendChild(getRandomHtmlEls('iframe'));
+  }
 }
-
-// function addIframe() {
-//   const iframeEls = document.getElementsByTagName('iframe');
-//   if (iframeEls.length === 0) {
-//     document.getElementsByTagName('body')[0].append(getRandomHtmlEls('iframe'));
-//   }
-// }
 
 function getCookie(key) {
   let value;
@@ -846,13 +960,13 @@ function addKonamiCodeListener(callback) {
   });
 }
 
-// function inIframe() {
-//   try {
-//     return window.self !== window.top;
-//   } catch (e) {
-//     return true;
-//   }
-// }
+function inIframe() {
+  try {
+    return window.self !== window.top;
+  } catch (e) {
+    return true;
+  }
+}
 
 // Loader
 if (document.readyState !== 'loading') {
