@@ -52,7 +52,7 @@ const ANSWER_CLICK_TIMEOUT = 15000;
 const TIME_BONUS_THRESHOLD = 80;
 const COOKIE_HIGH_SCORE = 'all-time-high';
 const COOKIE_HIGH_SCORE_BY_AUDIO_KEY = 'high-by-tune';
-const VERSION = '1.5.0';
+const VERSION = '1.5.1';
 
 function init() {
   const state = {
