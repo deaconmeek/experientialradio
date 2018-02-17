@@ -35,14 +35,14 @@ const _audioTitleByKey = {
   6: 'Know that I am god',
   7: 'Little red fox',
   8: 'Newage bullshit',
-  // 9: 'Scratchy tape town',
-  10: 'Stereo checkout',
+  9: 'Stereo checkout',
+  // 10: 'Scratchy tape town',
 };
 
 const LEVEL = {
   'prestart': 0,
-  'whackmole': 1,
-  'revealphrase': 2,
+  'levelone': 1,
+  'leveltwo': 2,
   'gameover': 3,
 };
 const CHARS_BASE_COLOR = 'aliceblue';
@@ -51,7 +51,7 @@ const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 15000;
 const TIME_BONUS_THRESHOLD = 80;
 const HIGH_SCORE_COOKIE = 'alltimehigh';
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 
 function init() {
   const state = {
@@ -62,23 +62,225 @@ function init() {
 
   initScriptLines();
   initCssProperties();
+  initCodeContainer();
 
   state.initialQuestion = generateQuestion(true);
   state.currentAudioKey = calculateCurrentAudioKey(state.initialQuestion);
   state.nextAudioKey = generateNextAudioKey(state.initialQuestion);
-
-  state.questionCharElByCharIndex = drawInitialQuestion(state.initialQuestion);
-
-  const initGameOver = getInitGameOver(state);
-  const revealWordHandler = getRevealWordHandler(state, initGameOver);
-  const initRevealWordLevel = getInitRevealWordLevel(state, revealWordHandler);
-  const whackMoleHandler = getWhackMoleHandler(state, initRevealWordLevel);
-
-  state.answerCharElByCharIndex = initWhackMoleLevel(whackMoleHandler);
-
   drawBackgroundImage(state.initialQuestion, state.currentAudioKey);
 
-  addKonamiCodeListener(() => autoStart(state, initRevealWordLevel));
+  state.level = LEVEL.prestart;
+
+  runLevelOne(state)
+    .then(runLevelTwo)
+    .then(runGameOver);
+}
+
+function runLevelOne(state) {
+  return new Promise((finish) => {
+    drawChars(state.initialQuestion + '?', 'question', 1000);
+    const nextQuestion = generateQuestion();
+    const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + encodeURIComponent(nextQuestion);
+    addClickHandlerToCharEls('question', () => document.location.replace(nextHref));
+    const answer = 'Experiential radio.';
+    drawChars(answer, 'answer', 2000);
+
+    addKonamiCodeListener(() => {
+      state.cheat = true;
+      finish(state);
+    });
+
+    state.levelOneClickCounter = 0;
+    state.gameTimeStart = null;
+
+    const completionCheck = function () {
+      const charEls = getCharElsForType('answer');
+      const isComplete = charEls.every(o => o.innerHTML === '&nbsp;' || o.style.color === 'black');
+      if (isComplete) {
+        removeClickHandlerFromCharEls('answer', actionHandler);
+        finish(state);
+      }
+      return isComplete;
+    };
+
+    const actionHandler = getLevelOneActionHandler(state, completionCheck);
+    addClickHandlerToCharEls('answer', actionHandler);
+  });
+}
+
+function getLevelOneActionHandler(state, completionCheck) {
+  const hideCharFn = function (charEl, hideTime) {
+    charEl.style.color = 'black';
+    window.setTimeout(() => {
+      charEl.style.color = CHARS_BASE_COLOR;
+    }, hideTime);
+    completionCheck();
+  };
+
+  return function (e) {
+    const el = e.target;
+    if (el.style.color === 'black') {
+      return;
+    }
+    if (!state.gameTimeStart) {
+      state.gameTimeStart = new Date();
+      state.level = LEVEL.levelone;
+    }
+
+    playBeep();
+    state.levelOneClickCounter += 1;
+    const minHideTime = (state.levelOneClickCounter * 300) + 2000;
+    const hideTime = Math.max(getRandomInt(ANSWER_CLICK_TIMEOUT), minHideTime);
+    hideCharFn(el, hideTime);
+
+    // Hide adjacent els with a slight delay
+    const siblingEls = [];
+    const charElByCharIndex = getCharElsForType('answer');
+    for (let [charIndex, spanEl] of charElByCharIndex.entries()) {
+      if (el === spanEl) {
+        if (charIndex > 0) {
+          siblingEls.push(charElByCharIndex[charIndex - 1]);
+        }
+        if (charIndex < (Object.keys(charElByCharIndex).length - 1)) {
+          siblingEls.push(charElByCharIndex[charIndex + 1]);
+        }
+        break;
+      }
+    }
+    for (const siblingEl of siblingEls) {
+      if (siblingEl.style.color !== 'black') {
+        window.setTimeout(() => {
+          const hideTime = Math.max(getRandomInt(ANSWER_CLICK_TIMEOUT / 1.5), minHideTime) | 0;
+          hideCharFn(siblingEl, hideTime);
+        }, 50);
+      }
+    }
+  };
+}
+
+function runLevelTwo(state) {
+  return new Promise((finish) => {
+    const tunesEl = document.getElementById('tunes');
+    const charEls = getCharElsForType('question');
+
+    let audioFile;
+    audioFile = 'audio/' + state.currentAudioKey + '.mp3';
+    tunesEl.setAttribute('src', audioFile);
+    tunesEl.play();
+
+    const scoreString = getBinaryScore(state.score);
+    drawChars(scoreString, 'score', 1000);
+    drawFlashingBackground(5);
+    playGlitch(1000);
+
+    let questionToPad = state.initialQuestion + '?'
+    let audioTitleToPad = _audioTitleByKey[state.nextAudioKey];
+    if (audioTitleToPad.length > questionToPad.length) {
+      questionToPad = padWord(questionToPad, audioTitleToPad.length);
+    } else {
+      audioTitleToPad = padWord(audioTitleToPad, questionToPad.length);
+    }
+    drawChars(questionToPad, 'question', 0);
+    state.questionDeltaByCharIndex = {};
+    for (const [charIndex] of charEls.entries()) {
+      state.questionDeltaByCharIndex[charIndex] = 0;
+    }
+    state.nextAudioTitlePadded = audioTitleToPad;
+    state.level = LEVEL.leveltwo;
+
+    const completionCheck = () => {
+      const isComplete = (Object.keys(state.questionDeltaByCharIndex).every((charIndex) => {
+        return state.questionDeltaByCharIndex[charIndex] === _finalCharDeltaLookup[charIndex];
+      }));
+      if (isComplete && state.level !== LEVEL.gameover) {
+        document.getElementById('play-container').style.display = 'none';
+        finish(state);
+      }
+      return isComplete;
+    };
+    const actionHandler = getLevelTwoActionHandler(state, completionCheck);
+    document.getElementById('play-container').addEventListener('click', actionHandler);
+    document.getElementById('play-container').style['display'] = 'block';
+  });
+}
+
+function getLevelTwoActionHandler(state, completionCheck) {
+  return function () {
+    if (state.level !== LEVEL.leveltwo) {
+      return;
+    }
+
+    state.momentum = updateMomentum(state.momentum, 1);
+    window.setTimeout(() => {
+      state.momentum = updateMomentum(state.momentum, -1);
+      // console.log(state.momentum);
+    }, DECELLERATION_INTERVAL);
+
+    const scoreDelta = (state.momentum * state.momentum) + 1;
+    state.score = Math.max(state.score + scoreDelta, 0);
+    const scoreString = getBinaryScore(state.score);
+    const scoreColor = (state.momentum >= MOMENTUM_BONUS_THRESHOLD) ? getRandomColor() : CHARS_BASE_COLOR;
+    drawNewScore(scoreString, scoreColor, true);
+
+    const deltaByCharIndex = state.questionDeltaByCharIndex;
+    let newChar;
+    let charIndex;
+    let finalCharDelta;
+    let letterColor = CHARS_BASE_COLOR;
+    while (!Number.isInteger(charIndex)) {
+      const nextCharIndex = getRandomInt(Object.keys(deltaByCharIndex).length);
+      finalCharDelta = _finalCharDeltaLookup[nextCharIndex];
+      if (deltaByCharIndex[nextCharIndex] < finalCharDelta) {
+        charIndex = nextCharIndex;
+      } else if (completionCheck()) {
+        return;
+      }
+    }
+    if (deltaByCharIndex[charIndex] === (finalCharDelta - 1)) {
+      newChar = state.nextAudioTitlePadded[charIndex];
+      letterColor = getRandomColor();
+      drawGlitch();
+    } else {
+      newChar = getRandomChar(state.momentum);
+    }
+    deltaByCharIndex[charIndex] += 1;
+    const spanEl = getCharElsForType('question')[charIndex];
+    drawNewLetter(spanEl, newChar, letterColor, true, completionCheck);
+  };
+}
+
+function runGameOver(state) {
+  state.level = LEVEL.gameover;
+  const nextAudioTitle = _audioTitleByKey[state.nextAudioKey];
+  const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) +
+    '?q=' + encodeURIComponent(nextAudioTitle.trim());
+  const questionClickHandler = () => document.location = nextHref;
+  const charEls = getCharElsForType('question');
+  for (const spanEl of charEls) {
+    spanEl.style.cursor = 'pointer';
+    spanEl.addEventListener('click', questionClickHandler);
+  }
+  // addIframe();
+  altBackground(Number.MAX_SAFE_INTEGER);
+  state.score = finalizeScore(state.score, state.cheat, state.gameTimeStart);
+  const scoreString = getBinaryScore(state.score);
+  drawNewScore(scoreString, CHARS_BASE_COLOR, true);
+}
+
+function addClickHandlerToCharEls(type, clickHandler) {
+  const charEls = getCharElsForType(type);
+  for (const el of charEls) {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', clickHandler);
+  }
+}
+
+function removeClickHandlerFromCharEls(type, clickHandler) {
+  const charEls = getCharElsForType(type);
+  for (const el of charEls) {
+    el.style.cursor = 'default';
+    el.removeEventListener('click', clickHandler);
+  }
 }
 
 function initScriptLines() {
@@ -97,11 +299,6 @@ function initCssProperties() {
     }).catch(() => {
     _scriptLines = {};
   });
-}
-
-function autoStart(state, initRevealWordLevel) {
-  state.cheat = true;
-  initRevealWordLevel();
 }
 
 function generateQuestion(allowFromQueryParams) {
@@ -151,20 +348,8 @@ function generateNextAudioKey(currentQuestion) {
   return audioKey;
 }
 
-function drawInitialQuestion(question) {
-  const nextQuestion = encodeURIComponent(generateQuestion());
-  const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) + '?q=' + nextQuestion;
-  const questionClickHandler = () => document.location.replace(nextHref);
-  return drawChars(question + '?', 'question', 1000, questionClickHandler);
-}
-
-function initWhackMoleLevel(whackMoleHandler) {
-  const answer = 'Experiential radio.';
-  return drawChars(answer, 'answer', 2000, whackMoleHandler);
-}
-
-function drawChars(string, type, displayDelay, clickHandler) {
-  const charElByCharIndex = {};
+function drawChars(string, type, displayDelay) {
+  const charEls = [];
   let containerEl;
   let className;
   if (type === 'question') {
@@ -177,91 +362,29 @@ function drawChars(string, type, displayDelay, clickHandler) {
   }
 
   containerEl.innerHTML = '';
-  for (const [i, char] of [...string].entries()) {
+  for (const char of [...string]) {
     const spanEl = document.createElement('span');
     spanEl.innerHTML =  char === ' ' ? '&nbsp;' : char;
     spanEl.classList.add('chars');
     if (className) {
       spanEl.classList.add(className);
     }
-    if (clickHandler) {
-      spanEl.style.cursor = 'pointer';
-      spanEl.addEventListener('click', clickHandler);
-    }
     containerEl.appendChild(spanEl);
-    charElByCharIndex[i] = spanEl;
+    charEls.push(spanEl);
   }
   window.setTimeout(() => {
-    for (const i of Object.keys(charElByCharIndex)) {
-      charElByCharIndex[i].style.opacity = 1;
+    for (const charEl of charEls) {
+      charEl.style.opacity = 1;
     }
   }, displayDelay);
-
-  return charElByCharIndex;
 }
 
-function getWhackMoleHandler(state, initRevealWordLevel) {
-  let clickCounter = 0;
-  const checkForComplete = function () {
-    const answerCharEls = Object.values(state.answerCharElByCharIndex);
-    const activateGame = answerCharEls.every(o => o.innerHTML === '&nbsp;' || o.style.color === 'black');
-    if (activateGame) {
-      for (const spanEl of answerCharEls) {
-        spanEl.removeEventListener('click', whackMoleHandler);
-      }
-      initRevealWordLevel();
-    }
-  };
-  const whackMoleHandler = function (e) {
-    const el = e.target;
-
-    if (el.style.color === 'black') {
-      return;
-    }
-    if (!state.gameTimeStart) {
-      state.gameTimeStart = new Date();
-      state.level = LEVEL.whackmole;
-    }
-
-    el.style.color = 'black';
-    playBeep();
-    checkForComplete();
-    clickCounter += 1;
-    const minHideTime = (clickCounter * 300) + 2000;
-    const hideTime = Math.max(getRandomInt(ANSWER_CLICK_TIMEOUT), minHideTime);
-    window.setTimeout(() => {
-      el.style.color = CHARS_BASE_COLOR;
-    }, hideTime);
-
-    // Hide adjacent els with a slight delay
-    const siblingEls = [];
-    for (let charIndex of Object.keys(state.answerCharElByCharIndex)) {
-      charIndex = parseInt(charIndex);
-      const spanEl = state.answerCharElByCharIndex[charIndex];
-      if (el === spanEl) {
-        if (charIndex > 0) {
-          siblingEls.push(state.answerCharElByCharIndex[charIndex - 1]);
-        }
-        if (charIndex < (Object.keys(state.answerCharElByCharIndex).length - 1)) {
-          siblingEls.push(state.answerCharElByCharIndex[charIndex + 1]);
-        }
-        break;
-      }
-    }
-    for (const siblingEl of siblingEls) {
-      if (siblingEl.style.color !== 'black') {
-        window.setTimeout(() => {
-          siblingEl.style.color = 'black';
-          checkForComplete();
-          const hideTime = Math.max(getRandomInt(ANSWER_CLICK_TIMEOUT / 1.5), minHideTime)|0;
-          window.setTimeout(() => {
-            siblingEl.style.color = CHARS_BASE_COLOR;
-          }, hideTime);
-        }, 50);
-      }
-    }
-  };
-  return whackMoleHandler;
+function getCharElsForType(type) {
+  if (type === 'question') {
+    return [...document.getElementById('question-subcontainer').children];
+  } else if (type === 'answer' || type === 'score') {
+    return [...document.getElementById('answer-subcontainer').children];
+  }
 }
 
 function playBeep() {
@@ -269,40 +392,13 @@ function playBeep() {
   beepEl.play();
 }
 
-function getRevealWordHandler(state, initGameOver) {
-  return function() {
-    if (state.level !== LEVEL.revealphrase) {
-      return;
-    }
-
-    state.momentum = updateMomentum(state.momentum, 1);
-    window.setTimeout(() => {
-      state.momentum = updateMomentum(state.momentum, -1);
-      // console.log(state.momentum);
-    }, DECELLERATION_INTERVAL);
-
-    const scoreDelta = (state.momentum * state.momentum) + 1;
-    state.score = Math.max(state.score + scoreDelta, 0);
-    const scoreString = getBinaryScore(state.score);
-    const color = (state.momentum >= MOMENTUM_BONUS_THRESHOLD) ? getRandomColor() : CHARS_BASE_COLOR;
-    drawNewScore(scoreString, state.answerCharElByCharIndex, color, true);
-
-    drawNewRandomLetter(state.questionDeltaByCharIndex, state.questionCharElByCharIndex, state.nextAudioTitlePadded, state.momentum)
-      .then(() => {
-        if (isGameOver(state.questionDeltaByCharIndex) && state.level !== LEVEL.gameover) {
-          initGameOver();
-        }
-      });
-  };
-}
-
 function updateMomentum(momentum, delta) {
   return Math.max(momentum + delta, 0);
 }
 
-function drawNewScore(string, charElByCharIndex, color, animate) {
-  // Assumes string is of same length as state.answerCharElByCharIndex
-  const charEls = Object.values(charElByCharIndex);
+function drawNewScore(string, color, animate) {
+  // Assumes string is of same length as charEls
+  const charEls = getCharElsForType('score');
   for (const [i, char] of [...string].entries()) {
     const spanEl = charEls[i];
     if (spanEl.innerHTML === char) {
@@ -312,52 +408,22 @@ function drawNewScore(string, charElByCharIndex, color, animate) {
   }
 }
 
-function drawNewRandomLetter(deltaByCharIndex, charElByCharIndex, newWord, momentum) {
-  return new Promise((resolve) => {
-    let newChar;
-    let charIndex;
-    let finalCharDelta;
-    let color = CHARS_BASE_COLOR;
-    while (!Number.isInteger(charIndex)) {
-      const nextCharIndex = getRandomInt(Object.keys(deltaByCharIndex).length);
-      finalCharDelta = _finalCharDeltaLookup[nextCharIndex];
-      if (deltaByCharIndex[nextCharIndex] < finalCharDelta) {
-        charIndex = nextCharIndex;
-      } else if (isGameOver(deltaByCharIndex)) {
-        return resolve();
-      }
-    }
-    if (deltaByCharIndex[charIndex] === (finalCharDelta - 1)) {
-      newChar = newWord[charIndex];
-      color = getRandomColor();
-      drawGlitch();
-    } else {
-      newChar = getRandomChar(momentum);
-    }
-    deltaByCharIndex[charIndex] += 1;
-    const spanEl = charElByCharIndex[charIndex];
-    drawNewLetter(spanEl, newChar, color, true, resolve);
-  });
-}
-
-function isGameOver(deltaByCharIndex) {
-  return (Object.keys(deltaByCharIndex).every((charIndex) => {
-    return deltaByCharIndex[charIndex] === _finalCharDeltaLookup[charIndex];
-  }));
-}
-
 function drawGlitch() {
   altBackground(2);
   playGlitch(300);
   mungeHtml();
+  logCode();
 }
 
 function mungeHtml() {
+  const glitchContainerEl = document.getElementById('glitch-container');
+  glitchContainerEl.appendChild(getRandomHtmlEls());
+}
+
+function logCode() {
   const codeContainerEl = document.getElementById('code-container');
   let codeString = codeContainerEl.innerText !== '' ? codeContainerEl.innerText : 'v' + VERSION;
   codeContainerEl.innerText = codeString + '\n' + getScriptSnippet(_scriptLines);
-
-  document.getElementsByTagName('body')[0].append(getRandomHtmlEls());
 }
 
 function getScriptSnippet(_scriptLines) {
@@ -378,28 +444,25 @@ function getRandomHtmlEls(forceType) {
   }
   const clonedEl = deepCloneEl(randomEl);
 
-  const color1 = getRandomColor();
-  const screenWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
-  const screenHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-  const paddingTop = parseInt(window.getComputedStyle(document.getElementById('question-container')).height);
+  const color = getRandomColor();
+  const containerDimensions = document.getElementById('glitch-container').getBoundingClientRect();
   const minHeight = 100;
   const minWidth = 100;
-  const x = getRandomInt(screenWidth - minWidth);
-  const y = getRandomInt(screenHeight - (2 * paddingTop) - minHeight);
-  const w = getRandomInt(screenWidth - x + minWidth);
-  const h = getRandomInt(screenHeight - y + minHeight);
+  const x = getRandomInt(containerDimensions.width - minWidth);
+  const y = getRandomInt(containerDimensions.height - minHeight);
+  const w = getRandomInt(containerDimensions.width - x) + minWidth;
+  const h = getRandomInt(containerDimensions.height - y) + minHeight;
 
   let el = getRandomHtmlEl(forceType)
   let subEl = getRandomHtmlEl();
   subEl.appendChild(clonedEl);
   el.appendChild(clonedEl);
-  el.style['z-index'] = 1;
   el.style['position'] = 'absolute';
   el.style['top'] = y;
   el.style['left'] = x;
   el.style['width'] = w;
   el.style['height'] = h;
-  el.style['color'] = color1;
+  el.style['color'] = color;
   el.style['background-color'] = 'rgba(0,0,0,0)';
   return el;
 }
@@ -499,11 +562,11 @@ function altBackground(flashes) {
   let flashCount = 0;
   const timer = window.setInterval(() => {
     if (flashCount % 2) {
-      document.getElementById('bg').style['display'] = 'none';
-      document.getElementById('bg-alt').style['display'] = 'block';
+      document.getElementById('image-container').style['display'] = 'none';
+      document.getElementById('alt-image-container').style['display'] = 'block';
     } else {
-      document.getElementById('bg').style['display'] = 'block';
-      document.getElementById('bg-alt').style['display'] = 'none';
+      document.getElementById('image-container').style['display'] = 'block';
+      document.getElementById('alt-image-container').style['display'] = 'none';
     }
     if (flashCount >= flashes) {
       window.clearInterval(timer);
@@ -560,41 +623,6 @@ function addTransitionEndListener(el, timeout, callback) {
   el.addEventListener('transitionend', callbackHandler, {once: true});
 }
 
-function getInitRevealWordLevel(state, revealWordHandler) {
-  return function initRevealWordLevel() {
-    const codeContainerEl = document.getElementById('code-container');
-    const tunesEl = document.getElementById('tunes');
-
-    let audioFile;
-    audioFile = 'audio/' + state.currentAudioKey + '.mp3';
-    tunesEl.setAttribute('src', audioFile);
-    tunesEl.play();
-
-    const scoreString = getBinaryScore(state.score);
-    state.answerCharElByCharIndex = drawChars(scoreString, 'score', 1000);
-    drawFlashingBackground(5);
-    playGlitch(1000);
-
-    codeContainerEl.addEventListener('click', revealWordHandler);
-    codeContainerEl.style.cursor = 'pointer';
-
-    let questionToPad = state.initialQuestion + '?'
-    let audioTitleToPad = _audioTitleByKey[state.nextAudioKey];
-    if (audioTitleToPad.length > questionToPad.length) {
-      questionToPad = padWord(questionToPad, audioTitleToPad.length);
-    } else {
-      audioTitleToPad = padWord(audioTitleToPad, questionToPad.length);
-    }
-    state.questionCharElByCharIndex = drawChars(questionToPad, 'question', 0);
-    state.questionDeltaByCharIndex = {};
-    for (const charIndex of Object.keys(state.questionCharElByCharIndex)) {
-      state.questionDeltaByCharIndex[charIndex] = 0;
-    }
-    state.nextAudioTitlePadded = audioTitleToPad;
-    state.level = LEVEL.revealphrase;
-  };
-}
-
 function padWord(word, length) {
   while (word.length < length) {
     if ((length - word.length) % 2) {
@@ -615,17 +643,17 @@ function getBinaryScore(currentScore) {
 }
 
 function drawFlashingBackground(flashes) {
-  const bgEl = document.getElementById('bg');
+  const imageContainerEl = document.getElementById('image-container');
   const htmlEl = document.getElementsByTagName('html')[0];
   const originalColor = htmlEl.getAttribute('background-color');
 
-  bgEl.style['display'] = 'none';
+  imageContainerEl.style['display'] = 'none';
   let flashCount = 0;
   const timer = window.setInterval(() => {
     htmlEl.style['background-color'] = getRandomColor();
     if (flashCount > flashes) {
       window.clearInterval(timer);
-      bgEl.style['display'] = 'block';
+      imageContainerEl.style['display'] = 'block';
       htmlEl.style['background-color'] = originalColor;
     }
     flashCount += 1;
@@ -634,7 +662,7 @@ function drawFlashingBackground(flashes) {
 
 function getRandomColor(allowTransparency) {
   let rgba;
-  const hex = '#'+((Math.random()*0x777777) + 0x666666).toString(16).slice(-6);
+  const hex = '#'+(Math.floor((Math.random()*0x777777)) + 0x888888).toString(16).slice(-6);
   if (allowTransparency) {
     const result = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/.exec(hex);
     if (!result) {
@@ -672,7 +700,7 @@ function drawBackgroundImage(question, audioKey) {
       }
       const mainCanvasEl = document.getElementById('main-image');
       mainCanvasEl.getContext('2d').putImageData(imageData,0,0);
-      const imageContainerEl = document.getElementById('bg');
+      const imageContainerEl = document.getElementById('image-container');
       imageContainerEl.style.opacity = 1;
 
       const mainCanvasAltEl = document.getElementById('main-image-alt');
@@ -738,27 +766,8 @@ function fetchFromUrl(url) {
   });
 }
 
-function getInitGameOver(state) {
-  return function () {
-    state.level = LEVEL.gameover;
-    const nextAudioTitle = _audioTitleByKey[state.nextAudioKey];
-    const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) +
-      '?q=' + encodeURIComponent(nextAudioTitle.trim());
-    const questionClickHandler = () => document.location = nextHref;
-    for (const spanEl of Object.values(state.questionCharElByCharIndex)) {
-      spanEl.style.cursor = 'pointer';
-      spanEl.addEventListener('click', questionClickHandler);
-    }
-    cleanUpCodeContainer();
-    addIframe();
-    altBackground(Number.MAX_SAFE_INTEGER);
-    state.score = finalizeScore(state.score, state.cheat, state.gameTimeStart);
-    const scoreString = getBinaryScore(state.score);
-    drawNewScore(scoreString, state.answerCharElByCharIndex, CHARS_BASE_COLOR, true);
-  };
-}
-
 function finalizeScore(score, cheat, gameTimeStart) {
+  gameTimeStart = gameTimeStart || new Date();
   const totalTime = ((new Date() - gameTimeStart) / 1000)|0;
   const timeBonus = cheat ? 77.77 : 2000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
   score += parseInt(timeBonus);
@@ -767,7 +776,8 @@ function finalizeScore(score, cheat, gameTimeStart) {
     document.cookie = HIGH_SCORE_COOKIE + '=' + score + '; path=/';
   }
 
-  document.getElementById('code-container').innerText = document.getElementById('code-container').innerText +
+  const codeContainerEl = document.getElementById('code-container');
+  codeContainerEl.innerText = codeContainerEl.innerText +
     '\nTIME TAKEN: ' + totalTime + 's' +
     '\nTIME BONUS: ' + timeBonus +
     '\nSCORE: ' + score +
@@ -776,22 +786,19 @@ function finalizeScore(score, cheat, gameTimeStart) {
   return score;
 }
 
-function cleanUpCodeContainer() {
+function initCodeContainer() {
   const codeEl = document.getElementById('code-container');
-  codeEl.style.cursor = 'pointer';
   codeEl.addEventListener('click', () => {
     codeEl.style.color = codeEl.style.color === 'black' ? 'white' : 'black';
   });
-  codeEl.style.width = 'unset';
-  codeEl.style.height = 'unset';
 }
 
-function addIframe() {
-  const iframeEls = document.getElementsByTagName('iframe');
-  if (iframeEls.length === 0) {
-    document.getElementsByTagName('body')[0].append(getRandomHtmlEls('iframe'));
-  }
-}
+// function addIframe() {
+//   const iframeEls = document.getElementsByTagName('iframe');
+//   if (iframeEls.length === 0) {
+//     document.getElementsByTagName('body')[0].append(getRandomHtmlEls('iframe'));
+//   }
+// }
 
 function getHighScore() {
   let highScore;

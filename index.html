@@ -6,19 +6,22 @@
     <link rel="shortcut icon" href="favicon.png">
   </head>
   <body>
-  <div id="bg" class="spread">
-    <canvas id="main-image" alt=""></canvas>
-  </div>
-  <div id="bg-alt" class="spread">
-    <canvas id="main-image-alt" alt=""></canvas>
-  </div>
+    <div id="image-container" class="spread">
+      <canvas id="main-image" alt=""></canvas>
+    </div>
+    <div id="alt-image-container" class="spread">
+      <canvas id="main-image-alt" alt=""></canvas>
+    </div>
+    <div id="glitch-container" class="noselect"></div>
+    <div id="code-container" class="noselect"></div>
+    <div id="play-container" class="noselect"></div>
+    <div id="tracks-container" class="noselect"></div>
     <div id="question-container" class="words-container centered">
       <div id="question-subcontainer"></div>
     </div>
     <div id="answer-container" class="words-container centered">
       <div id="answer-subcontainer"></div>
     </div>
-    <pre id="code-container" class="noselect"></pre>
     <audio id="tunes" loop></audio>
     <audio id="glitch" src="audio/glitchq.mp3"></audio>
     <audio id="beep" src="audio/beepq.mp3"></audio>

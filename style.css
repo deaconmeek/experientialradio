@@ -50,33 +50,49 @@ body {
   -o-transition: none !important;
   transition: none !important;
 }
-#bg {
+#image-container {
   opacity: 0;
   transition: opacity 0.6s;
 }
-#bg-alt {
+#alt-image-container {
   display: none;
 }
-#code-container {
+#glitch-container {
   position: absolute;
+  top: 12vh;
+  bottom: 12vh;
   width: 100%;
-  height: 100%;
+}
+#code-container {
+  cursor: pointer;
+  position: absolute;
   top: 12vh;
   left: 0;
-  text-align: left;
   margin-top: 0;
   font-size: 1.3vh;
   font-family: unset;
-  z-index:10;
   color: black;
+  text-align: left;
+}
+#play-container {
+  cursor: pointer;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+#tracks-container {
+  position: absolute;
+  top: 12vh;
+  bottom: 12vh;
+  width: 100%;
+  display: none;
 }
 .words-container {
-  z-index: 100;
   background-color: black;
   height: 12vh;
   overflow: hidden;
   white-space: nowrap;
-  z-index:20;
 }
 .preformatted {
   width: 2.4vh;
