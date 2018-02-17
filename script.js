@@ -50,7 +50,8 @@ const DECELLERATION_INTERVAL = 1500;
 const MOMENTUM_BONUS_THRESHOLD = 15;
 const ANSWER_CLICK_TIMEOUT = 15000;
 const TIME_BONUS_THRESHOLD = 80;
-const HIGH_SCORE_COOKIE = 'alltimehigh';
+const COOKIE_HIGH_SCORE = 'all-time-high';
+const COOKIE_HIGH_SCORE_BY_AUDIO_KEY = 'high-by-tune';
 const VERSION = '1.5.0';
 
 function init() {
@@ -161,7 +162,6 @@ function getLevelOneActionHandler(state, completionCheck) {
 function runLevelTwo(state) {
   return new Promise((finish) => {
     const tunesEl = document.getElementById('tunes');
-    const charEls = getCharElsForType('question');
 
     let audioFile;
     audioFile = 'audio/' + state.currentAudioKey + '.mp3';
@@ -182,7 +182,7 @@ function runLevelTwo(state) {
     }
     drawChars(questionToPad, 'question', 0);
     state.questionDeltaByCharIndex = {};
-    for (const [charIndex] of charEls.entries()) {
+    for (const [charIndex] of getCharElsForType('question').entries()) {
       state.questionDeltaByCharIndex[charIndex] = 0;
     }
     state.nextAudioTitlePadded = audioTitleToPad;
@@ -238,8 +238,10 @@ function getLevelTwoActionHandler(state, completionCheck) {
     }
     if (deltaByCharIndex[charIndex] === (finalCharDelta - 1)) {
       newChar = state.nextAudioTitlePadded[charIndex];
-      letterColor = getRandomColor();
-      drawGlitch();
+      if (newChar !== ' ') {
+        letterColor = getRandomColor();
+        drawGlitch();
+      }
     } else {
       newChar = getRandomChar(state.momentum);
     }
@@ -262,7 +264,7 @@ function runGameOver(state) {
   }
   // addIframe();
   altBackground(Number.MAX_SAFE_INTEGER);
-  state.score = finalizeScore(state.score, state.cheat, state.gameTimeStart);
+  state.score = finalizeScore(state.score, state.currentAudioKey, state.cheat, state.gameTimeStart);
   const scoreString = getBinaryScore(state.score);
   drawNewScore(scoreString, CHARS_BASE_COLOR, true);
 }
@@ -766,14 +768,24 @@ function fetchFromUrl(url) {
   });
 }
 
-function finalizeScore(score, cheat, gameTimeStart) {
+function finalizeScore(score, audioKey, cheat, gameTimeStart) {
   gameTimeStart = gameTimeStart || new Date();
   const totalTime = ((new Date() - gameTimeStart) / 1000)|0;
   const timeBonus = cheat ? 77.77 : 2000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
   score += parseInt(timeBonus);
 
-  if (score > getHighScore()) {
-    document.cookie = HIGH_SCORE_COOKIE + '=' + score + '; path=/';
+  let highScore = getCookie(COOKIE_HIGH_SCORE) || 0;
+  const highScoreByAudioKey = getCookie(COOKIE_HIGH_SCORE_BY_AUDIO_KEY) || {};
+  let highScoreForTune = highScoreByAudioKey[audioKey] || 0;
+
+  if (score > highScore) {
+    highScore = score;
+    setCookie(COOKIE_HIGH_SCORE, score);
+  }
+  if (score > highScoreForTune) {
+    highScoreByAudioKey[audioKey] = score;
+    highScoreForTune = score;
+    setCookie(COOKIE_HIGH_SCORE_BY_AUDIO_KEY, highScoreByAudioKey);
   }
 
   const codeContainerEl = document.getElementById('code-container');
@@ -781,7 +793,8 @@ function finalizeScore(score, cheat, gameTimeStart) {
     '\nTIME TAKEN: ' + totalTime + 's' +
     '\nTIME BONUS: ' + timeBonus +
     '\nSCORE: ' + score +
-    '\nALL TIME HIGH: ' + getHighScore();
+    '\nHIGH SCORE FOR TUNE: ' + highScoreForTune;
+    '\nALL TIME HIGH: ' + highScore;
 
   return score;
 }
@@ -800,17 +813,21 @@ function initCodeContainer() {
 //   }
 // }
 
-function getHighScore() {
-  let highScore;
+function getCookie(key) {
+  let value;
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {
-    const key = cookie.trim().split('=')[0];
-    if (key === HIGH_SCORE_COOKIE) {
-      highScore = cookie.split('=')[1];
+    const nextKey = cookie.trim().split('=')[0];
+    if (nextKey === key) {
+      value = cookie.split('=')[1];
       break;
     }
   }
-  return parseInt(highScore, 10) || 0;
+  return value ? JSON.parse(value) : null;
+}
+
+function setCookie(key, value) {
+  document.cookie = key + '=' + JSON.stringify(value) + '; path=/';
 }
 
 function addKonamiCodeListener(callback) {
