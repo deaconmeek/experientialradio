@@ -8,8 +8,9 @@ const _imgFilters = ['circlesmear', 'diffusion', 'dither', 'noise', 'pixelate', 
 const _finalCharDeltaLookup = [10, 22, 13, 19, 16, 21, 23, 14, 24, 20, 24, 15, 11, 17, 20, 21, 23, 12, 16, 22, 21, 11, 14, 19, 16, 18, 22, 21, 24, 11, 15, 18, 23, 13, 18, 19, 19, 23, 16, 15, 16, 13, 10, 12, 22, 22, 17, 23, 23, 14];
 // const _finalCharDeltaLookup = new Array(40).fill(1);
 
-const host = 'http://127.0.0.1:8080/';
-// const host = 'https://deaconmeek.github.io/experientialradio/';
+// const host = 'http://127.0.0.1:8080/';
+const host = 'https://deaconmeek.github.io/experientialradio/';
+
 const _phrases = [
   'Holy fuck', 'Conscientious objector', 'Unreasonable behaviour', 'Magnificent void', 'Reasonable doubt', 'Sound advice',
   'Questionable content', 'Conventional wisdom', 'Political agenda', 'Unusual predicament', 'Unique situation', 'Naughty nature',
