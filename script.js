@@ -3,12 +3,13 @@
 
 let _scriptLines;
 let _cssValuesByCssProperty;
-const _htmlEls = ['a', 'basefont', 'big', 'blink', 'blockquote', 'b', 'button', 'center', 'code', 'em', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'iframe', 'iframe', 'iframe', 'iframe', 'iframe', 'kbd', 'li', 'marquee', 'ol', 'q', 'samp', 'small', 'strikeout', 'strong', 'sub', 'sup', 'textarea', 'tt', 'u', 'ul'];
+const _htmlEls = ['a', 'basefont', 'big', 'blink', 'blockquote', 'b', 'button', 'center', 'code', 'em', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'iframe', 'kbd', 'li', 'marquee', 'ol', 'q', 'samp', 'small', 'strikeout', 'strong', 'sub', 'sup', 'textarea', 'tt', 'u', 'ul'];
 const _imgFilters = ['circlesmear', 'diffusion', 'dither', 'noise', 'pixelate', 'posterize']; // 'invert', 'sepia', 'solarize'
 const _finalCharDeltaLookup = [10, 22, 13, 19, 16, 21, 23, 14, 24, 20, 24, 15, 11, 17, 20, 21, 23, 12, 16, 22, 21, 11, 14, 19, 16, 18, 22, 21, 24, 11, 15, 18, 23, 13, 18, 19, 19, 23, 16, 15, 16, 13, 10, 12, 22, 22, 17, 23, 23, 14];
 // const _finalCharDeltaLookup = new Array(40).fill(1);
 
-const host = 'https://deaconmeek.github.io/experientialradio/';
+const host = 'http://127.0.0.1:8080/';
+// const host = 'https://deaconmeek.github.io/experientialradio/';
 const _phrases = [
   'Holy fuck', 'Conscientious objector', 'Unreasonable behaviour', 'Magnificent void', 'Reasonable doubt', 'Sound advice',
   'Questionable content', 'Conventional wisdom', 'Political agenda', 'Unusual predicament', 'Unique situation', 'Naughty nature',
@@ -40,30 +41,47 @@ const _audioTitleByKey = {
   // 10: 'Scratchy tape town',
 };
 
-const LEVEL = {
+const _level = {
   'prestart': 0,
   'levelone': 1,
   'leveltwo': 2,
   'gameover': 3,
 };
 
-const VERSION = '1.5.1';
+const _knobs = {
+  decellerationInterval: 1500,
+  momentumBonusThreshold: 15,
+  answerClickTimeout: 15000,
+  timeBonusThreshold: 80,
+  bonusElementFindPercent: 15,
+  maximumScoreStringLength: 20,
+};
 
-const CHARS_BASE_COLOR = 'aliceblue';
-const DECELLERATION_INTERVAL = 1500;
-const MOMENTUM_BONUS_THRESHOLD = 15;
-const ANSWER_CLICK_TIMEOUT = 15000;
-const TIME_BONUS_THRESHOLD = 80;
+const _badges = {
+  inception: 'inception',
+  buttonMasher: 'button-masher',
+  magicWord: 'magic-word',
+  codeHunter: 'code-hunter',
+  cheater: 'cheater',
+  knobTwiddler: 'knob-twidler',
+  questionMaster: 'question-master',
+  audiophile: 'audiophile',
+  clocker: 'clocker',
+};
 
-const COOKIE_HIGH_SCORE = 'all-time-high';
-const COOKIE_HIGH_SCORE_BY_AUDIO_KEY = 'high-by-tune';
-const COOKIE_BADGES_EARNED = 'badges';
+const _cookies = {
+  highScore: 'all-time-high',
+  highByTune: 'high-by-tune',
+  badges: 'badges',
+};
 
-const BADGE_ESCALATION_BY_MULTIPLIER = {
+const _version = '2.0.0';
+const _defaultAudioKey = '0';
+const _charsBaseColor = 'aliceblue';
+const _badgeEscalationByMultiplier = {
   2: 'double',
   3: 'triple',
 };
-const BADGE_INCEPTION = 'inception';
 
 function init() {
   const state = {
@@ -74,15 +92,17 @@ function init() {
 
   initScriptLines();
   initCssProperties();
-  addIFrameListener(state);
+  initKnobTwiddles();
+  addMenuSelectListeners();
+  addBadgeListeners(state);
 
   state.initialQuestion = generateQuestion(true);
-  state.currentAudioKey = calculateCurrentAudioKey(state.initialQuestion);
+  state.currentAudioKey = getAudioKeyFromQuestion(state.initialQuestion);
   state.nextAudioKey = generateNextAudioKey(state.initialQuestion);
   drawBackgroundImage(state.initialQuestion, state.currentAudioKey);
 
   state.badgesEarned = {};
-  state.level = LEVEL.prestart;
+  state.level = _level.prestart;
 
   runLevelOne(state)
     .then(runLevelTwo)
@@ -99,6 +119,7 @@ function runLevelOne(state) {
     drawChars(answer, 'answer', 2000);
 
     addKonamiCodeListener(() => {
+      triggerBonus(_badges.cheater);
       state.cheat = true;
       finish(state);
     });
@@ -125,7 +146,7 @@ function getLevelOneActionHandler(state, completionCheck) {
   const hideCharFn = function (charEl, hideTime) {
     charEl.style.color = 'black';
     window.setTimeout(() => {
-      charEl.style.color = CHARS_BASE_COLOR;
+      charEl.style.color = _charsBaseColor;
     }, hideTime);
     completionCheck();
   };
@@ -137,13 +158,15 @@ function getLevelOneActionHandler(state, completionCheck) {
     }
     if (!state.gameTimeStart) {
       state.gameTimeStart = new Date();
-      state.level = LEVEL.levelone;
+      state.level = _level.levelone;
+      checkForQuestionMasterBadge();
+      checkForKnobTwiddlerBadge(true);
     }
 
     playBeep();
     state.levelOneClickCounter += 1;
     const minHideTime = (state.levelOneClickCounter * 300) + 2000;
-    const hideTime = Math.max(getRandomInt(ANSWER_CLICK_TIMEOUT), minHideTime);
+    const hideTime = Math.max(getRandomInt(_knobs.answerClickTimeout), minHideTime);
     hideCharFn(el, hideTime);
 
     // Hide adjacent els with a slight delay
@@ -163,7 +186,7 @@ function getLevelOneActionHandler(state, completionCheck) {
     for (const siblingEl of siblingEls) {
       if (siblingEl.style.color !== 'black') {
         window.setTimeout(() => {
-          const hideTime = Math.max(getRandomInt(ANSWER_CLICK_TIMEOUT / 1.5), minHideTime) | 0;
+          const hideTime = Math.max(getRandomInt(_knobs.answerClickTimeout / 1.5), minHideTime) | 0;
           hideCharFn(siblingEl, hideTime);
         }, 50);
       }
@@ -198,27 +221,28 @@ function runLevelTwo(state) {
       state.questionDeltaByCharIndex[charIndex] = 0;
     }
     state.nextAudioTitlePadded = audioTitleToPad;
-    state.level = LEVEL.leveltwo;
+    state.level = _level.leveltwo;
+    logCode('v' + _version);
 
     const completionCheck = () => {
       const isComplete = (Object.keys(state.questionDeltaByCharIndex).every((charIndex) => {
         return state.questionDeltaByCharIndex[charIndex] === _finalCharDeltaLookup[charIndex];
       }));
-      if (isComplete && state.level !== LEVEL.gameover) {
-        document.getElementById('play-container').style.display = 'none';
+      if (isComplete && state.level !== _level.gameover) {
+        document.getElementById('play-container').classList.add('hidden');
         finish(state);
       }
       return isComplete;
     };
     const actionHandler = getLevelTwoActionHandler(state, completionCheck);
     document.getElementById('play-container').addEventListener('click', actionHandler);
-    document.getElementById('play-container').style['display'] = 'block';
+    document.getElementById('play-container').classList.remove('hidden');
   });
 }
 
 function getLevelTwoActionHandler(state, completionCheck) {
   return function () {
-    if (state.level !== LEVEL.leveltwo) {
+    if (state.level !== _level.leveltwo) {
       return;
     }
 
@@ -226,19 +250,19 @@ function getLevelTwoActionHandler(state, completionCheck) {
     window.setTimeout(() => {
       state.momentum = updateMomentum(state.momentum, -1);
       // console.log(state.momentum);
-    }, DECELLERATION_INTERVAL);
+    }, _knobs.decellerationInterval);
 
     const scoreDelta = (state.momentum * state.momentum) + 1;
     state.score = Math.max(state.score + scoreDelta, 0);
     const scoreString = getBinaryScore(state.score);
-    const scoreColor = (state.momentum >= MOMENTUM_BONUS_THRESHOLD) ? getRandomColor() : CHARS_BASE_COLOR;
+    const scoreColor = (state.momentum >= _knobs.momentumBonusThreshold) ? getRandomColor() : _charsBaseColor;
     drawNewScore(scoreString, scoreColor, true);
 
     const deltaByCharIndex = state.questionDeltaByCharIndex;
     let newChar;
     let charIndex;
     let finalCharDelta;
-    let letterColor = CHARS_BASE_COLOR;
+    let letterColor = _charsBaseColor;
     while (!Number.isInteger(charIndex)) {
       const nextCharIndex = getRandomInt(Object.keys(deltaByCharIndex).length);
       finalCharDelta = _finalCharDeltaLookup[nextCharIndex];
@@ -264,7 +288,7 @@ function getLevelTwoActionHandler(state, completionCheck) {
 }
 
 function runGameOver(state) {
-  state.level = LEVEL.gameover;
+  state.level = _level.gameover;
   const nextAudioTitle = _audioTitleByKey[state.nextAudioKey];
   const nextHref = document.location.href.substr(0, document.location.href.indexOf('?')) +
     '?q=' + encodeURIComponent(nextAudioTitle.trim());
@@ -274,36 +298,178 @@ function runGameOver(state) {
     spanEl.style.cursor = 'pointer';
     spanEl.addEventListener('click', questionClickHandler);
   }
-  // addIframe();
   altBackground(Number.MAX_SAFE_INTEGER);
+  checkForAudiophileBadge(state.currentAudioKey);
   state.score = finalizeScore(state.score, state.currentAudioKey, state.cheat, state.gameTimeStart);
 
   if (inIframe()) {
-    addBadge(state, BADGE_INCEPTION);
+    triggerBonus(_badges.inception);
   }
-  const collectIframeScoreBonusFn = () => {
-    const iframeEls = [...document.getElementsByTagName('iframe')];
-    for (const iframeEl of iframeEls) {
-      iframeEl.contentWindow.postMessage('requestBadges', '*');
-    }
-  };
-  initCodeContainer(collectIframeScoreBonusFn);
 }
 
-function addIFrameListener(state) {
+function checkForAudiophileBadge(currentAudioKey) {
+  const audioKeys = Object.keys(_audioTitleByKey);
+  const highScoreByAudioKey = getCookie(_cookies.highByTune) || {};
+  const firstTimeForAudioKey = !highScoreByAudioKey[currentAudioKey];
+  if (firstTimeForAudioKey && Object.keys(highScoreByAudioKey).length === (audioKeys.length - 1)) {
+    triggerBonus(_badges.audiophile);
+  }
+}
+
+function checkForQuestionMasterBadge() {
+  let queryQuestion = getQueryParam('q');
+  if (getAudioKeyFromQuestion(queryQuestion) === _defaultAudioKey) {
+    triggerBonus(_badges.questionMaster);
+  }
+}
+
+function initKnobTwiddles() {
+  for (const knobKey of Object.keys(_knobs)) {
+    const value = getQueryParam(knobKey);
+    if (value && !isNaN(parseInt(value))) {
+      _knobs[knobKey] = parseInt(value);
+    }
+  }
+}
+
+function checkForKnobTwiddlerBadge(shouldTriggerBonus) {
+  let activated = false;
+  for (const knobKey of Object.keys(_knobs)) {
+    if (getQueryParam(knobKey)) {
+      activated = true;
+    }
+  }
+  if (activated && shouldTriggerBonus) {
+    triggerBonus(_badges.knobTwiddler);
+  }
+  return activated;
+}
+
+function getButtonMasherHandler() {
+  let clickCount = 0;
+  return (e) => {
+    clickCount += 1;
+    e.target.innerText = clickCount;
+    if (clickCount > 20 && clickCount === getRandomInt(clickCount + 1)) {
+      triggerBonus(_badges.buttonMasher);
+    }
+  };
+}
+
+function getMagicWordHander() {
+  let keyInput = '';
+  const code = '65656565656565656565';
+  return (e) => {
+    keyInput += String(e.keyCode);
+    if (keyInput === code) {
+      triggerBonus(_badges.magicWord);
+    }
+    if (code.indexOf(keyInput) === 0) {
+      return;
+    }
+    keyInput = String(e.keyCode);
+  };
+}
+
+function getCodeHunterHandler() {
+  return (e) => {
+    e.preventDefault();
+    const textAreaEls = [...document.getElementsByTagName('textarea')];
+    if (textAreaEls.length === 0) {
+      logCode('Missing search query.');
+      return;
+    }
+    let searchQuery = '';
+    let matchingCodeSnippet = null;
+    for (const textAreaEl of textAreaEls) {
+      searchQuery = textAreaEl.value ? textAreaEl.value.trim() : '';
+      break;
+    }
+    if (searchQuery !== '') {
+      const matchingLines = _scriptLines.filter(o => o.indexOf(searchQuery) >= 0);
+      if (matchingLines.length > 0) {
+        matchingCodeSnippet = matchingLines[0];
+      }
+    }
+    if (matchingCodeSnippet) {
+      logCode(matchingCodeSnippet);
+      triggerBonus(_badges.codeHunter);
+    } else {
+      logCode('No results for "' + searchQuery + '"');
+    }
+  };
+}
+
+function addKonamiCodeListener(triggerSuccess) {
+  let keyInput = '';
+  const code = '38384040373937396665';
+  document.addEventListener('keydown', function (e) {
+    keyInput += String(e.keyCode);
+    if (keyInput === code) {
+      triggerSuccess();
+      return;
+    }
+    if (code.indexOf(keyInput) === 0) {
+      return;
+    }
+    keyInput = String(e.keyCode);
+  });
+}
+
+function getIframeBonusCollectorHandler() {
+  return () => {
+    const iframeEls = [...document.getElementsByTagName('iframe')];
+    for (const iframeEl of iframeEls) {
+      iframeEl.contentWindow.postMessage({action: 'requestBadges'}, '*');
+    }
+  };
+}
+
+function addMenuSelectListeners() {
+  const tuneSelectEl = document.getElementById('tune-select');
+  const badgeSelectEl = document.getElementById('badge-select');
+  // tuneSelectEl.addEventListener('click', (e) => {
+  //   toggleTunesContainer();
+  // });
+}
+
+function triggerBonus(badge) {
+  window.postMessage({
+    action: 'triggerBonus',
+    payload: badge
+  }, '*');
+}
+
+function addBadgeListeners(state) {
   window.addEventListener('message', (event) => {
     if (event.origin !== 'https://deaconmeek.github.io' && event.origin !== 'http://127.0.0.1:8080') {
       return;
     }
-    if (event.data === 'requestBadges') {
-      event.source.postMessage(state.badgesEarned, event.origin);
-    } else if (typeof event.data === 'object') {
-      const badgesEarned = Object.keys(event.data);
-      for (const badgeKey of badgesEarned) {
-        const multiplier = getBadgeMultiplier(badgeKey);
-        const { baseBadgeKey, escalatedBadgeKey } = getBaseAndEscalatedBadgeKeys(badgeKey, multiplier);
-        if (!state.badgesEarned[escalatedBadgeKey]) {
-          addBadge(state, baseBadgeKey, multiplier);
+    // console.log(event.data.action);
+    if (event.data.action === 'triggerBonus') {
+      const badgeKey = event.data.payload;
+      if (badgeKey && !state.badgesEarned[badgeKey]) {
+        addBadge(state, badgeKey);
+      }
+    }
+    if (event.data.action === 'requestBadges') {
+      event.source.postMessage({
+          action: 'postIframeBadges',
+          payload: state.badgesEarned
+      }, event.origin);
+    } else if (event.data.action === 'postIframeBadges') {
+      const badgesEarned = Object.keys(event.data.payload);
+      if (badgesEarned.length > 0) {
+        for (const badgeKey of badgesEarned) {
+          const multiplier = getBadgeMultiplier(badgeKey);
+          const { baseBadgeKey, escalatedBadgeKey } = getBaseAndEscalatedBadgeKeys(badgeKey, multiplier);
+          if (baseBadgeKey && !state.badgesEarned[escalatedBadgeKey]) {
+            addBadge(state, baseBadgeKey, multiplier);
+          }
+        }
+      } else {
+        if (!inIframe()) {
+          logCode('No secrets..');
         }
       }
     }
@@ -312,9 +478,9 @@ function addIFrameListener(state) {
 
 function getBadgeMultiplier(badgeKey) {
   let multiplier;
-  let reverseSortedMultipliers = Object.keys(BADGE_ESCALATION_BY_MULTIPLIER).sort().reverse();
+  let reverseSortedMultipliers = Object.keys(_badgeEscalationByMultiplier).sort().reverse();
   for (const curMultiplier of reverseSortedMultipliers) {
-    const escalationKey = BADGE_ESCALATION_BY_MULTIPLIER[curMultiplier];
+    const escalationKey = _badgeEscalationByMultiplier[curMultiplier];
     if (badgeKey.indexOf(escalationKey) === 0) {
       multiplier = Math.min(curMultiplier + 1, reverseSortedMultipliers[0]);
       break;
@@ -329,8 +495,8 @@ function getBadgeMultiplier(badgeKey) {
 function getBaseAndEscalatedBadgeKeys(badgeKey, multiplier) {
   let baseBadgeKey;
   let escalatedBadgeKey;
-  const curEscalationKey = BADGE_ESCALATION_BY_MULTIPLIER[multiplier - 1];
-  const newEscalationKey = BADGE_ESCALATION_BY_MULTIPLIER[multiplier];
+  const curEscalationKey = _badgeEscalationByMultiplier[multiplier - 1];
+  const newEscalationKey = _badgeEscalationByMultiplier[multiplier];
   if (!curEscalationKey) {
     baseBadgeKey = badgeKey;
   } else {
@@ -356,14 +522,6 @@ function removeClickHandlerFromCharEls(type, clickHandler) {
   }
 }
 
-function initCodeContainer(collectIframeScoreBonusFn) {
-  const codeEl = document.getElementById('code-container');
-  codeEl.addEventListener('click', () => {
-    codeEl.style.color = codeEl.style.color === 'black' ? 'white' : 'black';
-    collectIframeScoreBonusFn();
-  });
-}
-
 function initScriptLines() {
   fetchFromUrl(host + 'script.js')
     .then((script) => {
@@ -378,21 +536,12 @@ function initCssProperties() {
     .then((json) => {
       _cssValuesByCssProperty = JSON.parse(json);
     }).catch(() => {
-    _scriptLines = {};
+    _cssValuesByCssProperty = {};
   });
 }
 
 function generateQuestion(allowFromQueryParams) {
-  let queryQuestion;
-  if (document.location.search) {
-    const params = document.location.search.substr(1).split('&');
-    for (const param of params) {
-      if (param.split('=')[0] === 'q') {
-        queryQuestion = decodeURIComponent(param.split('=')[1]);
-        break;
-      }
-    }
-  }
+  let queryQuestion = getQueryParam('q');
   if (allowFromQueryParams && queryQuestion) {
     return queryQuestion;
   }
@@ -411,11 +560,11 @@ function generateQuestion(allowFromQueryParams) {
   return `${adjective} ${noun}`;
 }
 
-function calculateCurrentAudioKey(currentQuestion) {
-  if (Object.values(_audioTitleByKey).indexOf(currentQuestion) >= 0) {
-    return Object.keys(_audioTitleByKey)[Object.values(_audioTitleByKey).indexOf(currentQuestion)];
+function getAudioKeyFromQuestion(question) {
+  if (Object.values(_audioTitleByKey).indexOf(question) >= 0) {
+    return Object.keys(_audioTitleByKey)[Object.values(_audioTitleByKey).indexOf(question)];
   } else {
-    return '0';
+    return _defaultAudioKey;
   }
 }
 
@@ -482,7 +631,7 @@ function drawNewScore(string, color, animate) {
   const charEls = getCharElsForType('score');
   for (const [i, char] of [...string].entries()) {
     const spanEl = charEls[i];
-    if (spanEl.innerHTML === char) {
+    if (!spanEl || spanEl.innerHTML === char) {
       continue;
     }
     drawNewLetter(spanEl, char, color, animate);
@@ -498,26 +647,56 @@ function drawGlitch() {
 
 function mungeHtml() {
   const glitchContainerEl = document.getElementById('glitch-container');
-  glitchContainerEl.appendChild(getRandomHtmlEls());
+  const isBonusEl = getRandomInt(100) < _knobs.bonusElementFindPercent;
+  let el;
+  if (isBonusEl) {
+    const bonusElType = getBonusElType();
+    el = getRandomHtmlEls(bonusElType);
+    logCode('ADDING BONUS ' + bonusElType.toUpperCase());
+  } else {
+    el = getRandomHtmlEls();
+  }
+  glitchContainerEl.appendChild(el);
+}
+
+function getBonusElType() {
+  const randomInt = getRandomInt(4);
+  if (randomInt === 0) {
+    return 'iframe';
+  } else if (randomInt === 1) {
+    return 'button';
+  } else if (randomInt === 2) {
+    return 'textarea';
+  } else {
+    return 'a';
+  }
 }
 
 function logCode(text) {
-  const codeContainerEl = document.getElementById('code-container');
-  let codeString = codeContainerEl.innerText !== '' ? codeContainerEl.innerText : 'v' + VERSION;
-  codeContainerEl.innerText = codeString + '\n' + text;
+  const glitchContainerEl = document.getElementById('glitch-container');
+  const spanEl = document.createElement('span');
+  spanEl.classList.add('code-line');
+
+  const codeLineEls = [...document.getElementsByClassName('code-line')];
+  if (codeLineEls.length > 30) {
+    glitchContainerEl.removeChild(document.getElementsByClassName('code-line')[0]);
+  }
+  spanEl.innerText = text;
+  spanEl.addEventListener('click', getIframeBonusCollectorHandler());
+  glitchContainerEl.appendChild(spanEl);
 }
 
 function getScriptSnippet(_scriptLines) {
   let snippet;
   let i = 0;
-  while (_scriptLines.length && i < 10 && (!snippet || snippet.length < 1)) {
+  while (_scriptLines.length && i < 10 && (!snippet || snippet.length < 2)) {
     snippet = _scriptLines[getRandomInt(_scriptLines.length)].trim();
     i += 1;
   }
   return snippet;
 }
 
-function getRandomHtmlEls(forceType) {
+function getRandomHtmlEls(bonusElType) {
   const allEls = document.getElementsByTagName('*');
   let randomEl;
   while (!randomEl || !randomEl.id) {
@@ -527,8 +706,8 @@ function getRandomHtmlEls(forceType) {
 
   const color = getRandomColor();
   const containerDimensions = document.getElementById('glitch-container').getBoundingClientRect();
-  const minHeight = 100;
-  const minWidth = 100;
+  const minHeight = Math.floor(containerDimensions.width / 10);
+  const minWidth = Math.floor(containerDimensions.height / 10);
   const x = getRandomInt(containerDimensions.width - minWidth);
   const y = getRandomInt(containerDimensions.height - minHeight);
   const w = Math.max(getRandomInt(containerDimensions.width - x), minWidth);
@@ -536,14 +715,18 @@ function getRandomHtmlEls(forceType) {
 
   let el;
   let subEl;
-  if (forceType) {
-    el = getRandomHtmlEl(forceType);
+  if (bonusElType) {
+    el = getRandomHtmlEl(bonusElType);
   } else {
     el = getRandomHtmlEl();
     subEl = getRandomHtmlEl();
     el.appendChild(subEl);
     subEl.appendChild(clonedEl);
+    el.addEventListener('click', (e) => {
+      e.target.style['display'] = 'none';
+    });
   }
+  el.classList.add('glitch-item');
   el.style['position'] = 'absolute';
   el.style['top'] = y;
   el.style['left'] = x;
@@ -551,21 +734,35 @@ function getRandomHtmlEls(forceType) {
   el.style['height'] = h;
   el.style['color'] = color;
   el.style['background-color'] = 'rgba(0,0,0,0)';
+  el.style['display'] = 'block';
+  el.style['z-index'] = '0';
+
   return el;
 }
 
-function getRandomHtmlEl(forceType) {
-  let randomElType = forceType ? forceType : _htmlEls[getRandomInt(_htmlEls.length)];
+function getRandomHtmlEl(bonusElType) {
+  let randomElType = bonusElType ? bonusElType : _htmlEls[getRandomInt(_htmlEls.length)];
   const el = document.createElement(randomElType);
   const cssPropertyByName = getRandomCssProperties(20);
   for (const propertyName of Object.keys(cssPropertyByName)) {
     el.style[propertyName] = cssPropertyByName[propertyName];
   }
-  if (el.tagName === 'IFRAME') {
-    el.setAttribute('src', host + 'index.html');
-  } else if (el.tabName === 'IMG') {
-    const randomKey = Object.keys(_audioTitleByKey)[getRandomInt(Object.keys(_audioTitleByKey).length)];
-    el.setAttribute('src', host + 'img/' + randomKey + '.jpg');
+  if (bonusElType) {
+    if (el.tagName === 'IFRAME') {
+      el.setAttribute('src', host + 'index.html');
+    } else if (el.tagName === 'IMG') {
+      const randomKey = Object.keys(_audioTitleByKey)[getRandomInt(Object.keys(_audioTitleByKey).length)];
+      el.setAttribute('src', host + 'img/' + randomKey + '.jpg');
+    } else if (el.tagName === 'BUTTON') {
+      el.addEventListener('click', getButtonMasherHandler());
+    } else if (el.tagName === 'TEXTAREA') {
+      el.addEventListener('keydown', getMagicWordHander());
+    } else if (el.tagName === 'A') {
+      el.innerText = 'search..';
+      el.setAttribute('href', '#');
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', getCodeHunterHandler());
+    }
   }
   return el;
 }
@@ -723,7 +920,10 @@ function padWord(word, length) {
 
 function getBinaryScore(currentScore) {
   let scoreString = currentScore.toString(2);
-  while (scoreString.length < 20) {
+  if (scoreString.length > _knobs.maximumScoreStringLength) {
+    triggerBonus(_badges.clocker);
+  }
+  while (scoreString.length < _knobs.maximumScoreStringLength) {
     scoreString = '0' + scoreString;
   }
   return scoreString;
@@ -777,7 +977,7 @@ function drawBackgroundImage(question, audioKey) {
     if (audioKey !== '0') {
       return Promise.resolve(host + 'img/' + audioKey + '.jpg');
     } else {
-      return getImageUrlFromQuestion();
+      return getImageUrlFromQuestion(question);
     }
   }).then((imageUrl) => {
     buildImageData(imageUrl).then((imageData) => {
@@ -797,6 +997,15 @@ function drawBackgroundImage(question, audioKey) {
       mainCanvasAltEl.getContext('2d').putImageData(imageData,0,0);
     })
   });
+}
+
+function toggleTunesContainer() {
+  const tunesContainerEl = document.getElementById('tunes-container');
+  if (tunesContainerEl.classList.contains('hidden')) {
+    tunesContainerEl.classList.remove('hidden');
+  } else {
+    tunesContainerEl.classList.add('hidden');
+  }
 }
 
 function getImageUrlFromQuestion(question) {
@@ -855,9 +1064,26 @@ function fetchFromUrl(url) {
 
 function addBadge(state, baseBadgeKey, multiplier) {
   let bonus = 0;
-  if (baseBadgeKey === BADGE_INCEPTION) {
+  if (baseBadgeKey === _badges.audiophile) {
+    bonus = 20000;
+  } else if (baseBadgeKey === _badges.inception) {
     bonus = 10000;
+  } else if (baseBadgeKey === _badges.clocker) {
+    bonus = 10000;
+  } else if (baseBadgeKey === _badges.codeHunter) {
+    bonus = 10000;
+  } else if (baseBadgeKey === _badges.buttonMasher) {
+    bonus = 5000;
+  } else if (baseBadgeKey === _badges.magicWord) {
+    bonus = 5000;
+  } else if (baseBadgeKey === _badges.questionMaster) {
+    bonus = 3000;
+  } else if (baseBadgeKey === _badges.knobTwiddler) {
+    bonus = 3000;
+  } else if (baseBadgeKey === _badges.cheater) {
+    bonus = 1;
   }
+
   let badgeKey = baseBadgeKey;
   if (multiplier) {
     bonus = bonus * multiplier;
@@ -867,28 +1093,40 @@ function addBadge(state, baseBadgeKey, multiplier) {
   state.badgesEarned[badgeKey] = true;
   state.score += bonus;
   setHighScores(state.score, state.currentAudioKey);
-  setBadge(badgeKey);
-
-  logCode('BADGE EARNED: ' + badgeKey.toUpperCase() + '!   +' + bonus);
+  const firstTime = setBadge(badgeKey);
+  if (firstTime) {
+    logCode('BADGE EARNED: ' + badgeKey.toUpperCase() + '!   +' + bonus);
+  } else {
+    logCode(badgeKey.toUpperCase() + ' BONUS!   +' + bonus);
+  }
   logCode('NEW SCORE: ' + state.score);
 
   const scoreString = getBinaryScore(state.score);
-  drawNewScore(scoreString, getRandomColor(), true);
+  if (state.level > _level.levelone) {
+    drawNewScore(scoreString, getRandomColor(), true);
+  }
 }
 
 function setBadge(badgeKey) {
-  const badgeCountByBadgeName = getCookie(COOKIE_BADGES_EARNED) || {};
+  const badgeCountByBadgeName = getCookie(_cookies.badges) || {};
   badgeCountByBadgeName[badgeKey] = (badgeCountByBadgeName[badgeKey] || 0) + 1;
-  setCookie(COOKIE_BADGES_EARNED, badgeCountByBadgeName);
+  const firstTime = badgeCountByBadgeName[badgeKey] === 1;
+  setCookie(_cookies.badges, badgeCountByBadgeName);
+  return firstTime;
 }
 
 function finalizeScore(score, audioKey, cheat, gameTimeStart) {
   gameTimeStart = gameTimeStart || new Date();
   const totalTime = ((new Date() - gameTimeStart) / 1000)|0;
-  const timeBonus = cheat ? 77.77 : 2000 * Math.abs(Math.min((totalTime - TIME_BONUS_THRESHOLD), 0));
+  const timeBonus = cheat ? 77.77 : 2000 * Math.abs(Math.min((totalTime - _knobs.timeBonusThreshold), 0));
   score += parseInt(timeBonus);
 
-  const {highScore, highScoreForTune} = setHighScores(score);
+  const knobsHaveBeenTwiddled = checkForKnobTwiddlerBadge(false);
+  if (knobsHaveBeenTwiddled) {
+    score = score % 100000;
+  }
+
+  const {highScore, highScoreForTune} = setHighScores(score, audioKey);
 
   logCode('TIME TAKEN: ' + totalTime + 's');
   logCode('TIME BONUS: ' + timeBonus);
@@ -897,34 +1135,41 @@ function finalizeScore(score, audioKey, cheat, gameTimeStart) {
   logCode('ALL TIME HIGH: ' + highScore);
 
   const scoreString = getBinaryScore(score);
-  const color = timeBonus > 0 ? getRandomColor() : CHARS_BASE_COLOR;
+  const color = timeBonus > 0 ? getRandomColor() : _charsBaseColor;
   drawNewScore(scoreString, color, true);
 
   return score;
 }
 
 function setHighScores(score, audioKey) {
-  let highScore = getCookie(COOKIE_HIGH_SCORE) || 0;
-  const highScoreByAudioKey = getCookie(COOKIE_HIGH_SCORE_BY_AUDIO_KEY) || {};
+  let highScore = getCookie(_cookies.highScore) || 0;
+  const highScoreByAudioKey = getCookie(_cookies.highByTune) || {};
   let highScoreForTune = highScoreByAudioKey[audioKey] || 0;
 
   if (score > highScore) {
     highScore = score;
-    setCookie(COOKIE_HIGH_SCORE, score);
+    setCookie(_cookies.highScore, score);
   }
   if (score > highScoreForTune) {
     highScoreByAudioKey[audioKey] = score;
     highScoreForTune = score;
-    setCookie(COOKIE_HIGH_SCORE_BY_AUDIO_KEY, highScoreByAudioKey);
+    setCookie(_cookies.highByTune, highScoreByAudioKey);
   }
   return {highScore, highScoreForTune};
 }
 
-function addIframe() {
-  const iframeEls = document.getElementsByTagName('iframe');
-  if (iframeEls.length === 0) {
-    document.getElementById('glitch-container').appendChild(getRandomHtmlEls('iframe'));
+function getQueryParam(key) {
+  let value = null;
+  if (document.location.search) {
+    const params = document.location.search.substr(1).split('&');
+    for (const param of params) {
+      if (param.split('=')[0] === key) {
+        value = decodeURIComponent(param.split('=')[1]);
+        break;
+      }
+    }
   }
+  return value;
 }
 
 function getCookie(key) {
@@ -942,22 +1187,6 @@ function getCookie(key) {
 
 function setCookie(key, value) {
   document.cookie = key + '=' + JSON.stringify(value) + '; path=/';
-}
-
-function addKonamiCodeListener(callback) {
-  let keyInput = '';
-  const code = '38384040373937396665';
-  document.addEventListener('keydown', function (e) {
-    keyInput += String(e.keyCode);
-    if (keyInput === code) {
-      callback();
-      return;
-    }
-    if (code.indexOf(keyInput) === 0) {
-      return;
-    }
-    keyInput = String(e.keyCode);
-  });
 }
 
 function inIframe() {

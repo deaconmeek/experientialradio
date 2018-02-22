@@ -13,10 +13,14 @@ html {
   /*background-color: rgb(222, 241, 231);*/
 }
 body {
+  margin: 0;
   text-align: center;
   overflow-x: hidden;
   overflow-y: hidden;
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
+}
+.hidden {
+  display: none;
 }
 .spread {
   position: fixed;
@@ -66,32 +70,37 @@ body {
   width: 100%;
   z-index: 1;
 }
-#code-container {
+.menu-select {
   cursor: pointer;
-  position: absolute;
-  top: 12vh;
-  left: 0;
-  margin-top: 0;
-  font-size: 1.3vh;
-  font-family: unset;
-  color: black;
-  text-align: left;
+  float: right;
+  width: 50px;
+  height: 50px;
+  background-color: beige;
+  z-index: 10;
+}
+.glitch-item {
+  cursor: help;
+}
+.code-line {
+  color: white;
+  background-color: rgba(0,0,0,0.2);
+  float: left;
+  clear: left;
   z-index: 2;
+  font-size: 1.4vh;
 }
 #play-container {
-  cursor: pointer;
+  cursor: help;
   position: absolute;
   width: 100%;
   height: 100%;
-  display: none;
   z-index: 3;
 }
-#tracks-container {
+#tunes-container {
   position: absolute;
   top: 12vh;
   bottom: 12vh;
   width: 100%;
-  display: none;
   z-index: 5;
 }
 .words-container {
